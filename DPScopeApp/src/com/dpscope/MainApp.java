@@ -51,10 +51,10 @@ public class MainApp extends Application {
             // Load person overview.
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(MainApp.class.getResource("view/DPScopeOverview.fxml"));
-            AnchorPane personOverview = (AnchorPane) loader.load();
+            AnchorPane dpscopeOverview = (AnchorPane) loader.load();
 
             // Set person overview into the center of root layout.
-            rootLayout.setCenter(personOverview);
+            rootLayout.setCenter(dpscopeOverview);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -70,5 +70,10 @@ public class MainApp extends Application {
 
     public static void main(String[] args) {
         launch(args);
+        DPScope myScope = new DPScope();
+        if(myScope.isDevicePresent()){
+        	myScope.connect();
+        	myScope.ping();
+        }
     }
 }

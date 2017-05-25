@@ -12,9 +12,10 @@ public class MyExample1 {
 		try {
 			List<HidDeviceInfo> devList = PureJavaHidApi.enumerateDevices();
 			for (HidDeviceInfo info : devList) {
-				if((short) info.getVendorId() == VID){
+				if((short) info.getVendorId() == VID && (short) info.getProductId() == PID){
 					System.out.println("DPSCOPE detected!");
-					System.out.printf("VID = 0x%04X | PID = 0x%04X | Manufacturer = %s | Product = %s | Path = %s\n", //
+					System.out.printf("VID = 0x%04X | PID = 0x%04X | ", //
+							"Manufacturer = %s | Product = %s | Path = %s\n", //
 							info.getVendorId(), //
 							info.getProductId(), //
 							info.getManufacturerString(), //
