@@ -74,6 +74,7 @@ public class MainApp extends Application {
         if(myScope.isDevicePresent()){
         	myScope.connect();
         	myScope.ping();
+        	myScope.toggleLed(false);
         }
     }
 }
