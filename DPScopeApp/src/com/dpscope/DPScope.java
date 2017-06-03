@@ -14,6 +14,11 @@ public class DPScope {
 
 	final static short VID = (short) 0x04D8;
 	final static short PID = (short) 0xF891;
+	
+	protected final static byte ch1_1 = (byte) 5;
+	protected final static byte ch1_10 = (byte) 6;
+	protected final static byte ch2_1 = (byte) 8;
+	protected final static byte ch2_10 = (byte) 9;
 
 	private static HidDevice hidDev;
 	private static HidDeviceInfo devInfo;
@@ -31,6 +36,9 @@ public class DPScope {
 	byte[] txBuf;
 	int length;
 	int sentBytes;
+	
+	volatile static int ch1_data;
+	volatile static int ch2_data;
 
 	public DPScope() {
 		devInfo = null;
@@ -40,6 +48,8 @@ public class DPScope {
 		deviceOpen = false;
 		isDone = false;
 		currCmd = Command.CMD_IDLE;
+		ch1_data = 0;
+		ch2_data = 0;
 	}
 
 	public boolean isDevicePresent() {
@@ -119,8 +129,10 @@ public class DPScope {
 							// implemented");
 //							System.out.printf("CH1: %d\tCH2: %d", rxBuf[0] * 256 + rxBuf[1] - 511,
 //									rxBuf[2] * 256 + rxBuf[3] - 511);
-							System.out.println("Channel 1 -> " + ((int)(rxBuf[0] * 256 + rxBuf[1]) - 511));
-							System.out.println("Channel 2 -> " + ((int)(rxBuf[2] * 256 + rxBuf[3]) - 511));
+//							System.out.println("Channel 1 -> " + ((int)(rxBuf[0] * 256 + rxBuf[1]) - 511));
+//							System.out.println("Channel 2 -> " + ((int)(rxBuf[2] * 256 + rxBuf[3]) - 511));
+							ch1_data = ((int)(rxBuf[0] * 256 + rxBuf[1]) - 511);
+							ch2_data = ((int)(rxBuf[2] * 256 + rxBuf[3]) - 511);
 							break;
 						case CMD_WRITE_MEM:
 							System.out.print("Write to SFR memory - to be implemented");

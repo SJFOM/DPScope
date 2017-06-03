@@ -1,11 +1,6 @@
 package com.dpscope;
 
 public class TestApp {
-	
-	private final static byte ch1_1 = (byte) 5;
-	private final static byte ch1_10 = (byte) 6;
-	private final static byte ch2_1 = (byte) 8;
-	private final static byte ch2_10 = (byte) 9;
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
