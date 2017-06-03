@@ -46,6 +46,9 @@ public class DTSCTest extends ApplicationFrame {
 
 	private static DPScope myScope;
 	final JButton connect;
+	private static byte adcAcq;
+	private static byte ACQT;
+	private static byte ADCS;
 
 	public DTSCTest(final String title) {
 		super(title);
@@ -93,26 +96,32 @@ public class DTSCTest extends ApplicationFrame {
 			}
 		});
 
-		final JComboBox combo = new JComboBox();
-		combo.addItem("Fast");
-		combo.addItem("Slow");
-		combo.addActionListener(new ActionListener() {
+		final JComboBox speed = new JComboBox();
+		speed.addItem("Fast");
+		speed.addItem("Slow");
+		speed.addActionListener(new ActionListener() {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if ("Fast".equals(combo.getSelectedItem())) {
+				if ("Fast".equals(speed.getSelectedItem())) {
 					timer.setDelay(FAST);
 				} else {
 					timer.setDelay(SLOW);
 				}
 			}
 		});
+		
+		
+		final JComboBox channelSelect = new JComboBox();
+		channelSelect.addItem("Ch1");
+		channelSelect.addItem("Ch2");
 
 		this.add(new ChartPanel(chart), BorderLayout.CENTER);
 		JPanel btnPanel = new JPanel(new FlowLayout());
 		btnPanel.add(run);
 		btnPanel.add(connect);
-		btnPanel.add(combo);
+		btnPanel.add(speed);
+		btnPanel.add(channelSelect);
 		this.add(btnPanel, BorderLayout.SOUTH);
 
 		timer = new Timer(FAST, new ActionListener() {
@@ -122,8 +131,12 @@ public class DTSCTest extends ApplicationFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if(connect.getText().matches(DISCONNECT)){
-					myScope.readADC(DPScope.ch1_1, DPScope.ch2_1, (byte) 158);
-					newData[0] = myScope.ch1_data;
+					myScope.readADC(DPScope.ch1_1, DPScope.ch2_1, adcAcq);
+					if("Ch1".equals(channelSelect.getSelectedItem())){
+						newData[0] = myScope.ch1_data;
+					} else {
+						newData[0] = myScope.ch2_data;
+					}
 				} else {
 					newData[0] = 10; //randomValue();
 				}
@@ -164,6 +177,10 @@ public class DTSCTest extends ApplicationFrame {
 	public static void main(final String[] args) {
 
 		myScope = new DPScope();
+		
+		ADCS = 6;
+		ACQT = 3;		
+		adcAcq = (byte) (128 + ACQT * 8 + ADCS);
 
 		EventQueue.invokeLater(new Runnable() {
 			@Override
