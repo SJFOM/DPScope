@@ -1,17 +1,39 @@
 package com.dpscope;
 
 public class TestApp {
+	
+	private final static byte ch1_1 = (byte) 5;
+	private final static byte ch1_10 = (byte) 6;
+	private final static byte ch2_1 = (byte) 8;
+	private final static byte ch2_10 = (byte) 9;
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		DPScope myScope = new DPScope();
 		if (myScope.isDevicePresent()) {
 			myScope.connect();
-			myScope.ping();
-			myScope.getFwVersion();
-			myScope.toggleLed(true);
-			myScope.queryIfDone();
-			myScope.abort();
+			int ACQT = 3;
+			int ADCS = 6;
+			byte adcAcq = (byte) (128 + ACQT * 8 + ADCS);
+//			myScope.armScope(ch1_1, ch2_1, adcAcq);
+//			myScope.queryIfDone();
+//			while(!myScope.isDone){
+//				myScope.queryIfDone();
+//			}
+//			for(int i = 0; i <= 6-6; i++){
+//				myScope.readBack(i);
+//			}
+			while(ADCS < 1000){
+				myScope.readLogicAnalyzer();
+				try {
+					Thread.sleep(500);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				ADCS++;
+			}
+//			myScope.readADC(ch1_1, ch2_1, adcAcq);
 			myScope.checkUsbSupply();
 			myScope.disconnect();
 		} else {
