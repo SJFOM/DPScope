@@ -14,42 +14,60 @@ public class DPScope {
 
 	final static short VID = (short) 0x04D8;
 	final static short PID = (short) 0xF891;
-	
-	protected final static byte ch1_1 = (byte) 5;
-	protected final static byte ch1_10 = (byte) 6;
-	protected final static byte ch2_1 = (byte) 8;
-	protected final static byte ch2_10 = (byte) 9;
 
-	private static HidDevice hidDev;
-	private static HidDeviceInfo devInfo;
+	protected final static byte CH1_1 = (byte) 5;
+	protected final static byte CH1_10 = (byte) 6;
+	protected final static byte CH2_1 = (byte) 8;
+	protected final static byte CH2_10 = (byte) 9;
+	protected final static byte BATTERY = (byte) 15;
+
+	private HidDevice hidDev;
+	private HidDeviceInfo devInfo;
 
 	public boolean isDone;
 
 	private enum Command {
-		CMD_IDLE, CMD_PING, CMD_REVISION, CMD_ARM, CMD_DONE, CMD_ABORT, CMD_READBACK, CMD_READADC, CMD_STATUS_LED, CMD_WRITE_MEM, CMD_READ_MEM, CMD_WRITE_EEPROM, CMD_READ_EEPROM, CMD_READ_LA, CMD_ARM_LA, CMD_INIT, CMD_SERIAL_INIT, CMD_SERIAL_TX, CMD_CHECK_USB_SUPPLY;
+		CMD_IDLE,
+		CMD_PING,
+		CMD_REVISION,
+		CMD_ARM,
+		CMD_DONE,
+		CMD_ABORT,
+		CMD_READBACK,
+		CMD_READADC,
+		CMD_STATUS_LED,
+		CMD_WRITE_MEM,
+		CMD_READ_MEM,
+		CMD_WRITE_EEPROM,
+		CMD_READ_EEPROM,
+		CMD_READ_LA,
+		CMD_ARM_LA,
+		CMD_INIT,
+		CMD_SERIAL_INIT,
+		CMD_SERIAL_TX,
+		CMD_CHECK_USB_SUPPLY;
 	}
 
-	Command currCmd;
+	protected Command currCmd;
 
 	volatile static boolean deviceOpen;
 
-	byte[] txBuf;
-	int length;
-	int sentBytes;
-	
-	volatile static int ch1_data;
-	volatile static int ch2_data;
+	private byte[] txBuf;
+	private int length;
+
+	private volatile int signalCh1;
+	private volatile int signalCh2;
+	private volatile int usbVoltage;
 
 	public DPScope() {
 		devInfo = null;
 		txBuf = new byte[20];
 		length = 1;
-		sentBytes = -1;
 		deviceOpen = false;
 		isDone = false;
 		currCmd = Command.CMD_IDLE;
-		ch1_data = 0;
-		ch2_data = 0;
+		signalCh1 = 0;
+		signalCh2 = 0;
 	}
 
 	public boolean isDevicePresent() {
@@ -104,9 +122,13 @@ public class DPScope {
 						case CMD_REVISION:
 							System.out.printf("Fw version: v%d.%d", rxBuf[0], rxBuf[1]);
 							break;
+						case CMD_ARM:
+							System.out.println("Scope Armed...");
+							break;
 						case CMD_DONE:
 							if (rxBuf[0] > 0) {
-								System.out.printf("Current acquisition %s acquired\n", (rxBuf[0] > 0) ? ("is now") : "not");
+								System.out.printf("Current acquisition %s acquired\n",
+										(rxBuf[0] > 0) ? ("is now") : "not");
 								isDone = true;
 							}
 							break;
@@ -117,7 +139,7 @@ public class DPScope {
 							System.out.print("Readback rxBuf - to be implemented\n");
 							int ch1 = 0, ch2 = 0;
 							for (int idx = 0; idx < 64; idx += 2) {
-								// System.out.print(rxBuf[i] - 127 + " ");
+								// System.out.print(rxBuf[idx] - 127 + " ");
 								ch1 += rxBuf[idx] - 127;
 								ch2 += rxBuf[idx + 1] - 127;
 							}
@@ -127,12 +149,15 @@ public class DPScope {
 						case CMD_READADC:
 							// System.out.print("Readback ADC - to be
 							// implemented");
-//							System.out.printf("CH1: %d\tCH2: %d", rxBuf[0] * 256 + rxBuf[1] - 511,
-//									rxBuf[2] * 256 + rxBuf[3] - 511);
-//							System.out.println("Channel 1 -> " + ((int)(rxBuf[0] * 256 + rxBuf[1]) - 511));
-//							System.out.println("Channel 2 -> " + ((int)(rxBuf[2] * 256 + rxBuf[3]) - 511));
-							ch1_data = ((int)(rxBuf[0] * 256 + rxBuf[1]) - 511);
-							ch2_data = ((int)(rxBuf[2] * 256 + rxBuf[3]) - 511);
+							// System.out.printf("CH1: %d\tCH2: %d", rxBuf[0] *
+							// 256 + rxBuf[1] - 511,
+							// rxBuf[2] * 256 + rxBuf[3] - 511);
+							// System.out.println("Channel 1 -> " +
+							// ((int)(rxBuf[0] * 256 + rxBuf[1]) - 511));
+							// System.out.println("Channel 2 -> " +
+							// ((int)(rxBuf[2] * 256 + rxBuf[3]) - 511));
+							signalCh1 = ((int) (rxBuf[0] * 256 + rxBuf[1]) - 511);
+							signalCh2 = ((int) (rxBuf[2] * 256 + rxBuf[3]) - 511);
 							break;
 						case CMD_WRITE_MEM:
 							System.out.print("Write to SFR memory - to be implemented");
@@ -149,7 +174,7 @@ public class DPScope {
 						case CMD_READ_LA:
 							System.out.println("Read Logic Analyzer pins - to be implemented");
 							System.out.printf("return byte: 0x%02x -> %d\n", (byte) rxBuf[0], rxBuf[0]);
-							int twosCompConvert = (rxBuf[0] < 0) ? (rxBuf[0] + 256) : (rxBuf[0]);					
+							int twosCompConvert = (rxBuf[0] < 0) ? (rxBuf[0] + 256) : (rxBuf[0]);
 							System.out.printf("Pin 4: %d\n", (twosCompConvert & 0x10) >> 4);
 							System.out.printf("Pin 3: %d\n", (twosCompConvert & 0x20) >> 5);
 							System.out.printf("Pin 2: %d\n", (twosCompConvert & 0x40) >> 6);
@@ -159,14 +184,19 @@ public class DPScope {
 							System.out.print("Arm Logic Analyzer pins - to be implemented");
 							break;
 						case CMD_CHECK_USB_SUPPLY:
-							System.out.print("USB supply voltage - to be implemented\n");
-							System.out.printf("%d\t%d", (((rxBuf[0]) << 8) | rxBuf[1]), (((rxBuf[2]) << 8) | rxBuf[3]));
+							int usbVolt = 0;
+							for (int idx = 0; idx < 64; idx++) {
+//								System.out.printf("0x%02x\t%d\n", rxBuf[idx], rxBuf[idx]);
+								usbVolt += rxBuf[idx] - 127;
+							}
+							System.out.println("USB Voltage -> " + usbVolt/64);
+							usbVoltage = (int) usbVolt/64;
 							break;
 						default:
 							break;
 						}
 						currCmd = Command.CMD_IDLE;
-//						System.out.println();
+						// System.out.println();
 					}
 				});
 
@@ -206,33 +236,31 @@ public class DPScope {
 		txBuf[0] = 0x05;
 		txBuf[1] = ch1; // channel1
 		txBuf[2] = ch2; // channel2
-//		txBuf[1] = (byte) 15; //channel1
-//		txBuf[2] = (byte) 15; //channel2
 		txBuf[3] = (byte) adcAcq;
 		txBuf[4] = 0x00; // timer MSB
 		txBuf[5] = 0x10; // timer LSB
 		txBuf[6] = 0x01; // prescaler bypass (0 = use prescaler, 1 = bypass prescaler)
 		txBuf[7] = 0x00; // prescaler selection as power of 2 (7=div256, 0=div2)
-		txBuf[8] = (byte) 1; // sample shift first channel
+		txBuf[8] = (byte) 2; // sample shift first channel
 		txBuf[9] = (byte) 2; // sample shift second channel
-		txBuf[10] = (byte) 128; // sample subtract first channel
+		txBuf[10] = (byte) 0; // sample subtract first channel
 		txBuf[11] = (byte) 0; // sample subtract second channel
 		txBuf[12] = 0x00; // trigger source (0 = auto, 1 = triggered)
 		txBuf[13] = 0x00; // trigger polarity (0 = falling edge, 1 = rising edge)
 		txBuf[14] = 0x00; // trigger level MSB (currently not used)
-		txBuf[15] = 0x10; // trigger level LSB (only applicable if triggering on CH1, not for ext. trigger)
+		txBuf[15] = 0x10; // trigger level LSB (only applicable if triggering on
+		// CH1, not for ext. trigger)
 		txBuf[16] = 0x00; // sampling mode: (0 = real time, 1 = equivalent time)
-		txBuf[17] = 0x10; // equivalent time sample interval in 0.5 usec increments
-		txBuf[18] = (byte) (txBuf[17] >> 2); // equivalent time trigger stability check period (half of byte 17 value is a good choice)
+		txBuf[17] = 0x10; // equivalent time sample interval in 0.5 usec
+		// increments
+		txBuf[18] = (byte) (txBuf[17] >> 2); // equivalent time trigger
+		// stability check period (half
+		// of byte 17 value is a good
+		// choice)
 		txBuf[19] = 0x01; // trigger channel to use (1 = CH1 gain 1, 2 = CH1
-							// gain 10, 3 = ext. trigger)
+		// gain 10, 3 = ext. trigger)
 		length = 20;
-		if((ch1 != ((byte)15)) && (ch2 != ((byte)15))){
-			currCmd = Command.CMD_ARM;
-		} else {
-			currCmd = Command.CMD_CHECK_USB_SUPPLY;
-		}
-		
+		currCmd = Command.CMD_ARM;
 		waitForReply();
 	}
 
@@ -254,11 +282,15 @@ public class DPScope {
 	}
 
 	// CMD_READBACK (8) - Initiates read-back of acquired txBuf record
-	public void readBack(int block) {
+	public void readBack(int block, boolean battRead) {
 		txBuf[0] = 0x08;
 		txBuf[1] = (byte) block;
 		length = 2;
-		currCmd = Command.CMD_READBACK;
+		if(!battRead){
+			currCmd = Command.CMD_READBACK;
+		} else {
+			currCmd = Command.CMD_CHECK_USB_SUPPLY;
+		}
 		waitForReply();
 	}
 
@@ -382,17 +414,28 @@ public class DPScope {
 	// CMD_CHECK_USB_SUPPLY - Read ADC channel associated with USB supply
 	// voltage
 	public void checkUsbSupply() {
-		armScope((byte) 15, (byte) 15, (byte) 158);
-		waitForReply();
+		armScope(BATTERY, BATTERY, (byte) 158);
 	}
 
 	private void waitForReply() {
 		try {
-			sentBytes = hidDev.setOutputReport((byte) 0, txBuf, length);
+			hidDev.setOutputReport((byte) 0, txBuf, length);
 			Thread.sleep(5);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+
+	public int getSignalCh1() {
+		return signalCh1;
+	}
+
+	public int getSignalCh2() {
+		return signalCh2;
+	}
+
+	public int getUSBVoltage() {
+		return usbVoltage;
 	}
 }

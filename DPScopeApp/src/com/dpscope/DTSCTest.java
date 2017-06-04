@@ -30,22 +30,18 @@ public class DTSCTest extends ApplicationFrame {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-	private static final String TITLE = "Dynamic Series";
+	private static final String TITLE = "DPScope SE";
 	private static final String START = "Start";
 	private static final String STOP = "Stop";
 	private static final String CONNECT = "Connect";
 	private static final String DISCONNECT = "Disconnect";
-	private static final float MIN = 2;
-	private static final float MAX = 50;
-	private static final float MINMAX = MIN + MAX;
 	private static final int COUNT = 8 * 60;
-	private static final int FAST = 2;
+	private static final int FAST = 10;
 	private static final int SLOW = FAST * 5;
 	private static final Random random = new Random();
 	private Timer timer;
 
 	private static DPScope myScope;
-	final JButton connect;
 	private static byte adcAcq;
 	private static byte ACQT;
 	private static byte ADCS;
@@ -74,7 +70,7 @@ public class DTSCTest extends ApplicationFrame {
 			}
 		});
 
-		connect = new JButton(CONNECT);
+		final JButton connect = new JButton(CONNECT);
 		connect.addActionListener(new ActionListener() {
 
 			@Override
@@ -96,7 +92,7 @@ public class DTSCTest extends ApplicationFrame {
 			}
 		});
 
-		final JComboBox speed = new JComboBox();
+		final JComboBox<String> speed = new JComboBox<String>();
 		speed.addItem("Fast");
 		speed.addItem("Slow");
 		speed.addActionListener(new ActionListener() {
@@ -112,7 +108,7 @@ public class DTSCTest extends ApplicationFrame {
 		});
 		
 		
-		final JComboBox channelSelect = new JComboBox();
+		final JComboBox<String> channelSelect = new JComboBox<String>();
 		channelSelect.addItem("Ch1");
 		channelSelect.addItem("Ch2");
 
@@ -130,12 +126,12 @@ public class DTSCTest extends ApplicationFrame {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if(connect.getText().matches(DISCONNECT)){
-					myScope.readADC(DPScope.ch1_1, DPScope.ch2_1, adcAcq);
+				if(DISCONNECT.equals(connect.getText())){
+					myScope.readADC(DPScope.BATTERY, DPScope.CH2_1, adcAcq);
 					if("Ch1".equals(channelSelect.getSelectedItem())){
-						newData[0] = myScope.ch1_data;
+						newData[0] = myScope.getSignalCh1();
 					} else {
-						newData[0] = myScope.ch2_data;
+						newData[0] = myScope.getSignalCh2();
 					}
 				} else {
 					newData[0] = 10; //randomValue();
@@ -147,7 +143,7 @@ public class DTSCTest extends ApplicationFrame {
 	}
 
 	private float randomValue() {
-		return (float) (random.nextGaussian() * MINMAX / 3);
+		return (float) (random.nextGaussian() * 3);
 	}
 
 	private float[] gaussianData() {
