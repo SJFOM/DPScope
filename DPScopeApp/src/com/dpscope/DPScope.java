@@ -137,14 +137,17 @@ public class DPScope {
 							break;
 						case CMD_READBACK:
 							System.out.print("Readback rxBuf - to be implemented\n");
+							isDone = false;
 							int ch1 = 0, ch2 = 0;
 							for (int idx = 0; idx < 64; idx += 2) {
 								// System.out.print(rxBuf[idx] - 127 + " ");
 								ch1 += rxBuf[idx] - 127;
 								ch2 += rxBuf[idx + 1] - 127;
 							}
-							System.out.println("Channel 1 -> " + ch1 / 64);
-							System.out.println("Channel 2 -> " + ch2 / 64);
+							signalCh1 = ch1 / 32;
+							signalCh2 = ch2 / 32;
+							System.out.println("Channel 1 -> " + ch1 / 32);
+							System.out.println("Channel 2 -> " + ch2 / 32);
 							break;
 						case CMD_READADC:
 							// System.out.print("Readback ADC - to be
@@ -285,6 +288,7 @@ public class DPScope {
 	public void readBack(int block, boolean battRead) {
 		txBuf[0] = 0x08;
 		txBuf[1] = (byte) block;
+		isDone = false;
 		length = 2;
 		if(!battRead){
 			currCmd = Command.CMD_READBACK;

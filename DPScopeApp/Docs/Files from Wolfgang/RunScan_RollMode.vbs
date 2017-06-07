@@ -130,7 +130,7 @@ Public Sub RunScan_RollMode()
         DataBuffer(RecordLength + 1, 2) = DataBuffer(RecordLength, 2)
         DataBuffer(RecordLength + 1, 4) = DataBuffer(RecordLength, 4)
         
-        ' read back logi analyzer state
+        ' read back logic analyzer state
         HID_WriteData(1) = CMD_READ_LA
         Call HID_Write_And_Read
         LA_Val = HID_ReadData(1)

@@ -46,10 +46,11 @@ public class DTSCTest extends ApplicationFrame {
 	private static byte ACQT;
 	private static byte ADCS;
 
+	private static float[] lastData = new float[1];
+
 	public DTSCTest(final String title) {
 		super(title);
-		final DynamicTimeSeriesCollection dataset =
-				new DynamicTimeSeriesCollection(1, COUNT, new Second());
+		final DynamicTimeSeriesCollection dataset = new DynamicTimeSeriesCollection(1, COUNT, new Second());
 		dataset.setTimeBase(new Second(0, 0, 0, 1, 1, 2011));
 		dataset.addSeries(gaussianData(), 0, "Gaussian data");
 		JFreeChart chart = createChart(dataset);
@@ -85,6 +86,8 @@ public class DTSCTest extends ApplicationFrame {
 					if (myScope.isDevicePresent()) {
 						myScope.connect();
 						timer.start();
+						// myScope.checkUsbSupply();
+						myScope.armScope(DPScope.CH1_1, DPScope.CH2_1, (byte) 158);
 						connect.setText(DISCONNECT);
 						run.setText(STOP);
 					}
@@ -106,8 +109,7 @@ public class DTSCTest extends ApplicationFrame {
 				}
 			}
 		});
-		
-		
+
 		final JComboBox<String> channelSelect = new JComboBox<String>();
 		channelSelect.addItem("Ch1");
 		channelSelect.addItem("Ch2");
@@ -122,22 +124,19 @@ public class DTSCTest extends ApplicationFrame {
 
 		timer = new Timer(FAST, new ActionListener() {
 
-			float[] newData = new float[1];
+			// float[] newData = new float[1];
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if(DISCONNECT.equals(connect.getText())){
-					myScope.readADC(DPScope.BATTERY, DPScope.CH2_1, adcAcq);
-					if("Ch1".equals(channelSelect.getSelectedItem())){
-						newData[0] = myScope.getSignalCh1();
-					} else {
-						newData[0] = myScope.getSignalCh2();
-					}
-				} else {
-					newData[0] = 10; //randomValue();
+				if (DISCONNECT.equals(connect.getText())) {
+					 lastData[0] =
+//					 runScan_ScopeMode(("Ch1".equals(channelSelect.getSelectedItem()))
+//					 ? (1) : (2), false);
+					lastData[0] = runScan_RollMode((
+							"Ch1".equals(channelSelect.getSelectedItem())) ? (1) : (2), true);
 				}
 				dataset.advanceTime();
-				dataset.appendData(newData);
+				dataset.appendData(lastData);
 			}
 		});
 	}
@@ -155,13 +154,13 @@ public class DTSCTest extends ApplicationFrame {
 	}
 
 	private JFreeChart createChart(final XYDataset dataset) {
-		final JFreeChart result = ChartFactory.createTimeSeriesChart(
-				TITLE, "hh:mm:ss", "milliVolts", dataset, true, true, false);
+		final JFreeChart result = ChartFactory.createTimeSeriesChart(TITLE, "hh:mm:ss", "milliVolts", dataset, true,
+				true, false);
 		final XYPlot plot = result.getXYPlot();
 		ValueAxis domain = plot.getDomainAxis();
 		domain.setAutoRange(true);
 		ValueAxis range = plot.getRangeAxis();
-//		range.setRange(-MIN, MAX);
+		// range.setRange(-MIN, MAX);
 		range.setAutoRange(true);
 		return result;
 	}
@@ -170,12 +169,49 @@ public class DTSCTest extends ApplicationFrame {
 		timer.start();
 	}
 
+	public float runScan_ScopeMode(int channel, boolean battRead) {
+		float[] newData = new float[1];
+		if (myScope.isDone) {
+			myScope.readBack(0, battRead);
+
+			if (channel == 1) {
+				newData[0] = (battRead) ? (myScope.getSignalCh1()) : (myScope.getUSBVoltage());
+			} else {
+				newData[0] = myScope.getSignalCh2();
+			}
+
+			if (battRead) {
+				myScope.checkUsbSupply();
+			} else {
+				myScope.armScope(DPScope.CH1_1, DPScope.CH2_1, (byte) 158);
+			}
+		} else {
+			myScope.queryIfDone();
+		}
+		return newData[0];
+	}
+
+	public float runScan_RollMode(int channel, boolean battRead) {
+		float[] newData = new float[1];
+		if (battRead) {
+			myScope.readADC(DPScope.BATTERY, DPScope.BATTERY, adcAcq);
+		} else {
+			myScope.readADC(DPScope.CH1_1, DPScope.CH2_1, adcAcq);
+		}
+		if (channel == 1) {
+			newData[0] = myScope.getSignalCh1();
+		} else {
+			newData[0] = myScope.getSignalCh2();
+		}
+		return newData[0];
+	}
+
 	public static void main(final String[] args) {
 
 		myScope = new DPScope();
-		
+
 		ADCS = 6;
-		ACQT = 3;		
+		ACQT = 3;
 		adcAcq = (byte) (128 + ACQT * 8 + ADCS);
 
 		EventQueue.invokeLater(new Runnable() {
