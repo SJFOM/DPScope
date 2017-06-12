@@ -141,13 +141,14 @@ public class DPScope {
 							int ch1 = 0, ch2 = 0;
 							for (int idx = 0; idx < 64; idx += 2) {
 								// System.out.print(rxBuf[idx] - 127 + " ");
-								ch1 += rxBuf[idx] - 127;
-								ch2 += rxBuf[idx + 1] - 127;
+//								if(rxBuf[ids
+								ch1 += (int)((rxBuf[idx] & 0xFF) << 2) - 127*0;
+								ch2 += (int)((rxBuf[idx + 1] & 0xFF) << 2) - 127*0;
 							}
 							signalCh1 = ch1 / 32;
 							signalCh2 = ch2 / 32;
-							System.out.println("Channel 1 -> " + ch1 / 32);
-							System.out.println("Channel 2 -> " + ch2 / 32);
+							System.out.println("Channel 1 -> " + signalCh1);
+							System.out.println("Channel 2 -> " + signalCh2);
 							break;
 						case CMD_READADC:
 							// System.out.print("Readback ADC - to be
@@ -159,8 +160,8 @@ public class DPScope {
 							// ((int)(rxBuf[0] * 256 + rxBuf[1]) - 511));
 							// System.out.println("Channel 2 -> " +
 							// ((int)(rxBuf[2] * 256 + rxBuf[3]) - 511));
-							signalCh1 = ((int) (rxBuf[0] * 256 + rxBuf[1]) - 511);
-							signalCh2 = ((int) (rxBuf[2] * 256 + rxBuf[3]) - 511);
+							signalCh1 = ((int) ((rxBuf[0] & 0xFF) * 256 + (rxBuf[1]&0xFF)) - 511);
+							signalCh2 = ((int) ((rxBuf[2] & 0xFF) * 256 + (rxBuf[3]&0xFF)) - 511);
 							break;
 						case CMD_WRITE_MEM:
 							System.out.print("Write to SFR memory - to be implemented");

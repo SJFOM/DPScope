@@ -52,7 +52,7 @@ public class DTSCTest extends ApplicationFrame {
 		super(title);
 		final DynamicTimeSeriesCollection dataset = new DynamicTimeSeriesCollection(1, COUNT, new Second());
 		dataset.setTimeBase(new Second(0, 0, 0, 1, 1, 2011));
-		dataset.addSeries(gaussianData(), 0, "Gaussian data");
+		dataset.addSeries(gaussianData(), 0, "Scope data");
 		JFreeChart chart = createChart(dataset);
 
 		final JButton run = new JButton(STOP);
@@ -129,7 +129,7 @@ public class DTSCTest extends ApplicationFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (DISCONNECT.equals(connect.getText())) {
-					 lastData[0] =
+//					 lastData[0] =
 //					 runScan_ScopeMode(("Ch1".equals(channelSelect.getSelectedItem()))
 //					 ? (1) : (2), false);
 					lastData[0] = runScan_RollMode((
@@ -185,10 +185,12 @@ public class DTSCTest extends ApplicationFrame {
 			} else {
 				myScope.armScope(DPScope.CH1_1, DPScope.CH2_1, (byte) 158);
 			}
+			
+			return newData[0];
 		} else {
 			myScope.queryIfDone();
-		}
-		return newData[0];
+			return lastData[0];
+		}		
 	}
 
 	public float runScan_RollMode(int channel, boolean battRead) {

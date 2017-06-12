@@ -128,7 +128,8 @@ Public Sub RunScan_ScopeMode()
 
         HID_WriteData(1) = CMD_READBACK
 
-        ' full ADC range is 255 steps (8 bit) and covers 5V; we are using only slightly less than half range for display,
+        ' full ADC range is 255 steps (8 bit) and covers 5V; we are using only slightly less than half
+        ' range for display,
         ' i.e. 12 units out of possible 25 --> factor 25/12
         ' full range is 255 and we have want to scale values 0...100 for full screen height --> 100/255 = 1/2.55
         ' scope is trimmed so 0V results in ADC value 128 (mid scale), which on screen should be scaled at 50
