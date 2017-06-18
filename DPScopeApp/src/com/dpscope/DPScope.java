@@ -19,7 +19,14 @@ public class DPScope {
 	protected final static byte CH1_10 = (byte) 6;
 	protected final static byte CH2_1 = (byte) 8;
 	protected final static byte CH2_10 = (byte) 9;
-	protected final static byte BATTERY = (byte) 15;
+	protected final static byte CH_BATTERY = (byte) 15;
+
+	private final static int ADCS = 2;
+	private final static int ACQT = 5;
+
+	private final static byte ADC_ACQ = (byte) ((128 + ACQT * 8 + ADCS) & 0xff);
+
+	private static float usbSupplyVoltage = 0.0f;
 
 	private HidDevice hidDev;
 	private HidDeviceInfo devInfo;
@@ -141,9 +148,9 @@ public class DPScope {
 							int ch1 = 0, ch2 = 0;
 							for (int idx = 0; idx < 64; idx += 2) {
 								// System.out.print(rxBuf[idx] - 127 + " ");
-//								if(rxBuf[ids
-								ch1 += (int)((rxBuf[idx] & 0xFF) << 2) - 127*0;
-								ch2 += (int)((rxBuf[idx + 1] & 0xFF) << 2) - 127*0;
+								// if(rxBuf[ids
+								ch1 += (int) ((rxBuf[idx] & 0xFF) << 2) - 127 * 0;
+								ch2 += (int) ((rxBuf[idx + 1] & 0xFF) << 2) - 127 * 0;
 							}
 							signalCh1 = ch1 / 32;
 							signalCh2 = ch2 / 32;
@@ -160,8 +167,9 @@ public class DPScope {
 							// ((int)(rxBuf[0] * 256 + rxBuf[1]) - 511));
 							// System.out.println("Channel 2 -> " +
 							// ((int)(rxBuf[2] * 256 + rxBuf[3]) - 511));
-							signalCh1 = ((int) ((rxBuf[0] & 0xFF) * 256 + (rxBuf[1]&0xFF)) - 511);
-							signalCh2 = ((int) ((rxBuf[2] & 0xFF) * 256 + (rxBuf[3]&0xFF)) - 511);
+
+							signalCh1 = ((int) ((rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF)) - 511);
+							signalCh2 = ((int) ((rxBuf[2] & 0xFF) * 256 + (rxBuf[3] & 0xFF)) - 511);
 							break;
 						case CMD_WRITE_MEM:
 							System.out.print("Write to SFR memory - to be implemented");
@@ -188,13 +196,8 @@ public class DPScope {
 							System.out.print("Arm Logic Analyzer pins - to be implemented");
 							break;
 						case CMD_CHECK_USB_SUPPLY:
-							int usbVolt = 0;
-							for (int idx = 0; idx < 64; idx++) {
-//								System.out.printf("0x%02x\t%d\n", rxBuf[idx], rxBuf[idx]);
-								usbVolt += rxBuf[idx] - 127;
-							}
-							System.out.println("USB Voltage -> " + usbVolt/64);
-							usbVoltage = (int) usbVolt/64;
+							usbSupplyVoltage += ((int) (rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF));
+							usbSupplyVoltage = (float) 4.096 * 1023 / usbSupplyVoltage;
 							break;
 						default:
 							break;
@@ -236,21 +239,23 @@ public class DPScope {
 	}
 
 	// CMD_ARM (5) - Sets all acquisition parameters and arms scope
-	public void armScope(byte ch1, byte ch2, byte adcAcq) {
+	public void armScope(byte ch1, byte ch2) {
 		txBuf[0] = 0x05;
 		txBuf[1] = ch1; // channel1
 		txBuf[2] = ch2; // channel2
-		txBuf[3] = (byte) adcAcq;
+		txBuf[3] = ADC_ACQ;
 		txBuf[4] = 0x00; // timer MSB
 		txBuf[5] = 0x10; // timer LSB
-		txBuf[6] = 0x01; // prescaler bypass (0 = use prescaler, 1 = bypass prescaler)
+		txBuf[6] = 0x01; // prescaler bypass (0 = use prescaler, 1 = bypass
+							// prescaler)
 		txBuf[7] = 0x00; // prescaler selection as power of 2 (7=div256, 0=div2)
 		txBuf[8] = (byte) 2; // sample shift first channel
 		txBuf[9] = (byte) 2; // sample shift second channel
 		txBuf[10] = (byte) 0; // sample subtract first channel
 		txBuf[11] = (byte) 0; // sample subtract second channel
 		txBuf[12] = 0x00; // trigger source (0 = auto, 1 = triggered)
-		txBuf[13] = 0x00; // trigger polarity (0 = falling edge, 1 = rising edge)
+		txBuf[13] = 0x00; // trigger polarity (0 = falling edge, 1 = rising
+							// edge)
 		txBuf[14] = 0x00; // trigger level MSB (currently not used)
 		txBuf[15] = 0x10; // trigger level LSB (only applicable if triggering on
 		// CH1, not for ext. trigger)
@@ -286,28 +291,27 @@ public class DPScope {
 	}
 
 	// CMD_READBACK (8) - Initiates read-back of acquired txBuf record
-	public void readBack(int block, boolean battRead) {
+	public void readBack(int block) {
 		txBuf[0] = 0x08;
 		txBuf[1] = (byte) block;
 		isDone = false;
 		length = 2;
-		if(!battRead){
-			currCmd = Command.CMD_READBACK;
-		} else {
-			currCmd = Command.CMD_CHECK_USB_SUPPLY;
-		}
+		currCmd = Command.CMD_READBACK;
 		waitForReply();
 	}
 
 	// CMD_READADC (9) - Reads back ADC directly (with 10 bit resolution,
 	// returns 2 bytes per channel)
-	public void readADC(byte ch1, byte ch2, byte adcAcq) {
+	public void readADC(byte ch1, byte ch2) {
 		txBuf[0] = 0x09;
 		txBuf[1] = ch1;
 		txBuf[2] = ch2;
-		txBuf[3] = adcAcq;
+		txBuf[3] = ADC_ACQ;
 		length = 4;
 		currCmd = Command.CMD_READADC;
+		if (ch1 == CH_BATTERY || ch2 == CH_BATTERY) {
+			currCmd = Command.CMD_CHECK_USB_SUPPLY;
+		}
 		waitForReply();
 	}
 
@@ -373,7 +377,7 @@ public class DPScope {
 		txBuf[0] = 0x0F;
 		txBuf[1] = 0x05;
 		txBuf[2] = 0x08;
-		txBuf[3] = (byte) 158;
+		txBuf[3] = ADC_ACQ;
 		length = 4;
 		currCmd = Command.CMD_READ_LA;
 		waitForReply();
@@ -418,8 +422,10 @@ public class DPScope {
 
 	// CMD_CHECK_USB_SUPPLY - Read ADC channel associated with USB supply
 	// voltage
-	public void checkUsbSupply() {
-		armScope(BATTERY, BATTERY, (byte) 158);
+	public float checkUsbSupply() {
+		usbSupplyVoltage = 0;
+		readADC(CH_BATTERY, CH_BATTERY);
+		return getUSBVoltage();
 	}
 
 	private void waitForReply() {
@@ -440,7 +446,7 @@ public class DPScope {
 		return signalCh2;
 	}
 
-	public int getUSBVoltage() {
-		return usbVoltage;
+	public float getUSBVoltage() {
+		return usbSupplyVoltage;
 	}
 }

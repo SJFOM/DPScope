@@ -87,7 +87,7 @@ public class DTSCTest extends ApplicationFrame {
 						myScope.connect();
 						timer.start();
 						// myScope.checkUsbSupply();
-						myScope.armScope(DPScope.CH1_1, DPScope.CH2_1, (byte) 158);
+						myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
 						connect.setText(DISCONNECT);
 						run.setText(STOP);
 					}
@@ -129,11 +129,10 @@ public class DTSCTest extends ApplicationFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (DISCONNECT.equals(connect.getText())) {
-//					 lastData[0] =
-//					 runScan_ScopeMode(("Ch1".equals(channelSelect.getSelectedItem()))
-//					 ? (1) : (2), false);
-					lastData[0] = runScan_RollMode((
-							"Ch1".equals(channelSelect.getSelectedItem())) ? (1) : (2), true);
+					lastData[0] = runScan_ScopeMode(("Ch1".equals(channelSelect.getSelectedItem())) ? (1) : (2));
+					// lastData[0] = runScan_RollMode((
+					// "Ch1".equals(channelSelect.getSelectedItem())) ? (1) :
+					// (2), true);
 				}
 				dataset.advanceTime();
 				dataset.appendData(lastData);
@@ -169,36 +168,32 @@ public class DTSCTest extends ApplicationFrame {
 		timer.start();
 	}
 
-	public float runScan_ScopeMode(int channel, boolean battRead) {
+	public float runScan_ScopeMode(int channel) {
 		float[] newData = new float[1];
 		if (myScope.isDone) {
-			myScope.readBack(0, battRead);
+			myScope.readBack(0);
 
 			if (channel == 1) {
-				newData[0] = (battRead) ? (myScope.getSignalCh1()) : (myScope.getUSBVoltage());
+				newData[0] = myScope.getSignalCh1();
 			} else {
 				newData[0] = myScope.getSignalCh2();
 			}
 
-			if (battRead) {
-				myScope.checkUsbSupply();
-			} else {
-				myScope.armScope(DPScope.CH1_1, DPScope.CH2_1, (byte) 158);
-			}
-			
+			myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
+
 			return newData[0];
 		} else {
 			myScope.queryIfDone();
 			return lastData[0];
-		}		
+		}
 	}
 
 	public float runScan_RollMode(int channel, boolean battRead) {
 		float[] newData = new float[1];
 		if (battRead) {
-			myScope.readADC(DPScope.BATTERY, DPScope.BATTERY, adcAcq);
+			myScope.readADC(DPScope.CH_BATTERY, DPScope.CH_BATTERY);
 		} else {
-			myScope.readADC(DPScope.CH1_1, DPScope.CH2_1, adcAcq);
+			myScope.readADC(DPScope.CH1_1, DPScope.CH2_1);
 		}
 		if (channel == 1) {
 			newData[0] = myScope.getSignalCh1();
