@@ -9,9 +9,12 @@ public class TestApp {
 			myScope.connect();
 			float avgVolts = 0.0f;
 			int i = 0;
-			for (i = 0; i < 100; i++) {
-				avgVolts += myScope.checkUsbSupply();
+			for (i = 0; i < 1; i++) {			
+				myScope.checkUsbSupply();
+//				while(!myScope.isReady);
+				avgVolts += myScope.getUSBVoltage();
 			}
+//			while(!myScope.isReady);
 			System.out.println("Batt voltage: " + avgVolts / i);
 			myScope.disconnect();
 		} else {

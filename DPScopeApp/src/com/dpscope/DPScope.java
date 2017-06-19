@@ -2,7 +2,11 @@ package com.dpscope;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import org.apache.commons.lang3.ArrayUtils;
 
 import purejavahidapi.DeviceRemovalListener;
 import purejavahidapi.HidDevice;
@@ -27,11 +31,25 @@ public class DPScope {
 	private final static byte ADC_ACQ = (byte) ((128 + ACQT * 8 + ADCS) & 0xff);
 
 	private static float usbSupplyVoltage = 0.0f;
+	private static boolean gotVoltage = false;
 
 	private HidDevice hidDev;
 	private HidDeviceInfo devInfo;
 
 	public boolean isDone;
+	public boolean isReady;
+	
+	protected Command currCmd;
+
+	volatile static boolean deviceOpen;
+
+	private Byte[] txBuf;
+	private int length;
+
+	private volatile int signalCh1;
+	private volatile int signalCh2;
+	
+	private List<Byte[]> commandList = new ArrayList<Byte[]>();
 
 	private enum Command {
 		CMD_IDLE,
@@ -55,26 +73,17 @@ public class DPScope {
 		CMD_CHECK_USB_SUPPLY;
 	}
 
-	protected Command currCmd;
-
-	volatile static boolean deviceOpen;
-
-	private byte[] txBuf;
-	private int length;
-
-	private volatile int signalCh1;
-	private volatile int signalCh2;
-	private volatile int usbVoltage;
-
 	public DPScope() {
 		devInfo = null;
-		txBuf = new byte[20];
+		txBuf = new Byte[20];
 		length = 1;
 		deviceOpen = false;
 		isDone = false;
+		isReady = false;
 		currCmd = Command.CMD_IDLE;
 		signalCh1 = 0;
 		signalCh2 = 0;
+		usbSupplyVoltage = 0;
 	}
 
 	public boolean isDevicePresent() {
@@ -102,6 +111,8 @@ public class DPScope {
 	public void connect() {
 		if (devInfo != null) {
 			deviceOpen = true;
+			isReady = true;
+			processCmd.start();
 			try {
 				hidDev = PureJavaHidApi.openDevice(devInfo);
 				hidDev.setDeviceRemovalListener(new DeviceRemovalListener() {
@@ -125,9 +136,11 @@ public class DPScope {
 								// TODO Auto-generated catch block
 								e.printStackTrace();
 							}
+							isReady = true;
 							break;
 						case CMD_REVISION:
 							System.out.printf("Fw version: v%d.%d", rxBuf[0], rxBuf[1]);
+							isReady = true;
 							break;
 						case CMD_ARM:
 							System.out.println("Scope Armed...");
@@ -137,10 +150,12 @@ public class DPScope {
 								System.out.printf("Current acquisition %s acquired\n",
 										(rxBuf[0] > 0) ? ("is now") : "not");
 								isDone = true;
+								isReady = true;
 							}
 							break;
 						case CMD_ABORT:
 							System.out.print("Scope disarmed");
+							isReady = true;
 							break;
 						case CMD_READBACK:
 							System.out.print("Readback rxBuf - to be implemented\n");
@@ -156,6 +171,7 @@ public class DPScope {
 							signalCh2 = ch2 / 32;
 							System.out.println("Channel 1 -> " + signalCh1);
 							System.out.println("Channel 2 -> " + signalCh2);
+							isReady = true;
 							break;
 						case CMD_READADC:
 							// System.out.print("Readback ADC - to be
@@ -170,18 +186,23 @@ public class DPScope {
 
 							signalCh1 = ((int) ((rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF)) - 511);
 							signalCh2 = ((int) ((rxBuf[2] & 0xFF) * 256 + (rxBuf[3] & 0xFF)) - 511);
+							isReady = true;
 							break;
 						case CMD_WRITE_MEM:
 							System.out.print("Write to SFR memory - to be implemented");
+							isReady = true;
 							break;
 						case CMD_READ_MEM:
 							System.out.print("Read from SFR memory - to be implemented");
+							isReady = true;
 							break;
 						case CMD_WRITE_EEPROM:
 							System.out.print("Write to EEPROM memory - to be implemented");
+							isReady = true;
 							break;
 						case CMD_READ_EEPROM:
 							System.out.print("Read from EEPROM memory - to be implemented");
+							isReady = true;
 							break;
 						case CMD_READ_LA:
 							System.out.println("Read Logic Analyzer pins - to be implemented");
@@ -191,19 +212,22 @@ public class DPScope {
 							System.out.printf("Pin 3: %d\n", (twosCompConvert & 0x20) >> 5);
 							System.out.printf("Pin 2: %d\n", (twosCompConvert & 0x40) >> 6);
 							System.out.printf("Pin 1: %d\n", (twosCompConvert & 0x80 >> 7));
+							isReady = true;
 							break;
 						case CMD_ARM_LA:
 							System.out.print("Arm Logic Analyzer pins - to be implemented");
+							isReady = true;
 							break;
 						case CMD_CHECK_USB_SUPPLY:
 							usbSupplyVoltage += ((int) (rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF));
 							usbSupplyVoltage = (float) 4.096 * 1023 / usbSupplyVoltage;
+							isReady = true;
+							gotVoltage = true;
 							break;
 						default:
 							break;
 						}
 						currCmd = Command.CMD_IDLE;
-						// System.out.println();
 					}
 				});
 
@@ -226,7 +250,7 @@ public class DPScope {
 		txBuf[0] = 0x02;
 		length = 1;
 		currCmd = Command.CMD_PING;
-		waitForReply();
+		queueCommand();
 		// System.out.printf("%d bytes sent\n", sentBytes);
 	}
 
@@ -235,7 +259,7 @@ public class DPScope {
 		txBuf[0] = 0x03;
 		length = 1;
 		currCmd = Command.CMD_REVISION;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_ARM (5) - Sets all acquisition parameters and arms scope
@@ -270,7 +294,7 @@ public class DPScope {
 		// gain 10, 3 = ext. trigger)
 		length = 20;
 		currCmd = Command.CMD_ARM;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_DONE (6) - Query whether scope has already finished the acquisition
@@ -279,7 +303,7 @@ public class DPScope {
 		length = 1;
 		currCmd = Command.CMD_DONE;
 		isDone = false;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_ABORT (7) - Disarms the scope, so it's read for a new command
@@ -287,7 +311,7 @@ public class DPScope {
 		txBuf[0] = 0x07;
 		length = 1;
 		currCmd = Command.CMD_ABORT;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_READBACK (8) - Initiates read-back of acquired txBuf record
@@ -297,7 +321,7 @@ public class DPScope {
 		isDone = false;
 		length = 2;
 		currCmd = Command.CMD_READBACK;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_READADC (9) - Reads back ADC directly (with 10 bit resolution,
@@ -312,7 +336,7 @@ public class DPScope {
 		if (ch1 == CH_BATTERY || ch2 == CH_BATTERY) {
 			currCmd = Command.CMD_CHECK_USB_SUPPLY;
 		}
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_STATUS_LED (10) - toggle LED (0 - off, 1 - on)
@@ -321,7 +345,7 @@ public class DPScope {
 		txBuf[1] = (byte) ((onOff) ? 1 : 0);
 		length = 2;
 		currCmd = Command.CMD_STATUS_LED;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_WRITE_MEM (11) - Writes a byte to a memory location on the
@@ -335,7 +359,7 @@ public class DPScope {
 		txBuf[3] = dataSFR;
 		length = 4;
 		currCmd = Command.CMD_WRITE_MEM;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_WRITE_MEM (12) - Reads a memory location on the microcontroller's SFR
@@ -345,7 +369,7 @@ public class DPScope {
 		txBuf[2] = addrLSB;
 		length = 3;
 		currCmd = Command.CMD_READ_MEM;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_WRITE_EEPROM (13) - Writes a memory location on the microcontroller’s
@@ -357,7 +381,7 @@ public class DPScope {
 		txBuf[3] = dataEEPROM;
 		length = 4;
 		currCmd = Command.CMD_WRITE_EEPROM;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_READ_EEPROM (14) - Read a memory location on the microcontroller’s
@@ -368,7 +392,7 @@ public class DPScope {
 		txBuf[2] = addrLSB;
 		length = 3;
 		currCmd = Command.CMD_READ_EEPROM;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_READ_LA (15) - Reads back the state of the logic analyzer pins (port
@@ -380,7 +404,7 @@ public class DPScope {
 		txBuf[3] = ADC_ACQ;
 		length = 4;
 		currCmd = Command.CMD_READ_LA;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_ARM_LA (16) - Sets logic analyzer acquisition parameters
@@ -390,7 +414,7 @@ public class DPScope {
 		txBuf[2] = triggerCond;
 		length = 3;
 		currCmd = Command.CMD_ARM_LA;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_INIT (17) - Re-initialize microcontroller
@@ -399,7 +423,7 @@ public class DPScope {
 		txBuf[1] = (byte) ((blinkLED) ? (0x01) : (0x00));
 		length = 2;
 		currCmd = Command.CMD_INIT;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_SERIAL_INIT (18) - Initialize external trigger pin for serial txBuf
@@ -408,7 +432,7 @@ public class DPScope {
 		txBuf[0] = 0x12;
 		length = 1;
 		currCmd = Command.CMD_SERIAL_INIT;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_SERIAL_TX (19) - Send one byte over trigger pin at 9600 baud
@@ -417,26 +441,50 @@ public class DPScope {
 		txBuf[1] = serialByte;
 		length = 2;
 		currCmd = Command.CMD_SERIAL_TX;
-		waitForReply();
+		queueCommand();
 	}
 
 	// CMD_CHECK_USB_SUPPLY - Read ADC channel associated with USB supply
 	// voltage
-	public float checkUsbSupply() {
-		usbSupplyVoltage = 0;
+	public void checkUsbSupply() {
 		readADC(CH_BATTERY, CH_BATTERY);
-		return getUSBVoltage();
+//		return getUSBVoltage();
 	}
 
-	private void waitForReply() {
-		try {
-			hidDev.setOutputReport((byte) 0, txBuf, length);
-			Thread.sleep(5);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	private void queueCommand() {
+		commandList.add((Arrays.copyOfRange(txBuf, 0, length)));
 	}
+	
+	Thread processCmd = new Thread() {
+	    public void run() {
+	    	byte[] currentCmd;
+	        try {
+	        	while(deviceOpen){
+	        		if(isReady && (commandList.size() > 0)){
+	        			isReady = false;
+	        			currentCmd = ArrayUtils.toPrimitive(commandList.get(commandList.size()-1));
+	        			commandList.remove(commandList.size() - 1);        			
+	        			hidDev.setOutputReport((byte) 0, currentCmd, currentCmd.length);
+	        		} else {
+	        			Thread.sleep(10);
+	        		}
+	        	}
+	        } catch(InterruptedException v) {
+	            System.out.println(v);
+	        }
+	    }  
+	};
+	
+	
+//	private void waitForReply() {
+//		try {
+//			hidDev.setOutputReport((byte) 0, txBuf, length);
+//			Thread.sleep(5);
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//	}
 
 	public int getSignalCh1() {
 		return signalCh1;
@@ -447,6 +495,8 @@ public class DPScope {
 	}
 
 	public float getUSBVoltage() {
+		while(!gotVoltage);
+		gotVoltage = false;
 		return usbSupplyVoltage;
 	}
 }
