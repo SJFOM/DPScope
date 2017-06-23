@@ -50,6 +50,8 @@ public class DPScope {
 	private volatile int signalCh2;
 	
 	private List<Byte[]> commandList = new ArrayList<Byte[]>();
+	private boolean waitForResponse = false;
+	private List<BootAction> actionList;
 
 	private enum Command {
 		CMD_IDLE,
@@ -327,6 +329,17 @@ public class DPScope {
 	// CMD_READADC (9) - Reads back ADC directly (with 10 bit resolution,
 	// returns 2 bytes per channel)
 	public void readADC(byte ch1, byte ch2) {
+		buildCmdReadAdc(ch1, ch2);
+		queueCommand();
+	}
+
+	public void readADCDirect(byte ch1, byte ch2) {
+		buildCmdReadAdc(ch1, ch2);
+//		(Arrays.copyOfRange(txBuf, 0, length));
+		hidDev.setOutputReport((byte) 0, ArrayUtils.toPrimitive(Arrays.copyOfRange(txBuf, 0, length)), length);
+	}
+
+	private void buildCmdReadAdc(byte ch1, byte ch2) {
 		txBuf[0] = 0x09;
 		txBuf[1] = ch1;
 		txBuf[2] = ch2;
@@ -336,7 +349,6 @@ public class DPScope {
 		if (ch1 == CH_BATTERY || ch2 == CH_BATTERY) {
 			currCmd = Command.CMD_CHECK_USB_SUPPLY;
 		}
-		queueCommand();
 	}
 
 	// CMD_STATUS_LED (10) - toggle LED (0 - off, 1 - on)
@@ -444,9 +456,37 @@ public class DPScope {
 		queueCommand();
 	}
 
+	public void checkUsbSupply(int count) {
+		actionList.add(new BootAction(){
+			@Override
+			public boolean go() throws Exception {
+				float avgVolts = 0.0f;
+				for(int i=0;i<count;i++){
+					checkUsbSupplyDirect();
+					waitForResponse();
+					avgVolts += getUSBVoltage();
+				}
+				return false;
+			}
+		});
+		startQueueIfStopped();
+	}
+
+	private void startQueueIfStopped() {
+		if(!processAction.isAlive()){
+			processAction.start();
+		}
+	}
+
+	public void checkUsbSupplyDirect() {
+		waitForResponse  = true;
+		readADCDirect(CH_BATTERY, CH_BATTERY);
+	}
+
 	// CMD_CHECK_USB_SUPPLY - Read ADC channel associated with USB supply
 	// voltage
 	public void checkUsbSupply() {
+		waitForResponse  = true;
 		readADC(CH_BATTERY, CH_BATTERY);
 //		return getUSBVoltage();
 	}
@@ -456,7 +496,8 @@ public class DPScope {
 	}
 	
 	Thread processCmd = new Thread() {
-	    public void run() {
+
+		public void run() {
 	    	byte[] currentCmd;
 	        try {
 	        	while(deviceOpen){
@@ -465,6 +506,9 @@ public class DPScope {
 	        			currentCmd = ArrayUtils.toPrimitive(commandList.get(commandList.size()-1));
 	        			commandList.remove(commandList.size() - 1);        			
 	        			hidDev.setOutputReport((byte) 0, currentCmd, currentCmd.length);
+	        			if(waitForResponse){
+	        				waitForResponse();
+	        			}
 	        		} else {
 	        			Thread.sleep(10);
 	        		}
@@ -472,9 +516,62 @@ public class DPScope {
 	        } catch(InterruptedException v) {
 	            System.out.println(v);
 	        }
-	    }  
+	    }
 	};
 	
+	Thread processAction = new Thread() {
+
+		public void run() {
+	        try {
+	        	while(deviceOpen){
+	        		if(isReady && (actionList.size() > 0)){
+	        			isReady = false;
+        				try {
+							actionList.get(0).go();
+						} catch (Exception e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+	        		} else {
+	        			Thread.sleep(10);
+	        		}
+	        		
+	        		if(actionList.size()==0){
+	        			break;
+	        		}
+	        	}
+	        } catch(InterruptedException v) {
+	            System.out.println(v);
+	        }
+	    }
+	};
+	
+	private void waitForResponse() {
+		int loopCount = 0;
+		int interval = 20;
+		int loopCountTotal = (int) Math.ceil(((double)100)/((double)interval));
+
+		boolean flag = true;
+		while(flag) {
+			if(isReady){
+				break;
+			}
+
+			loopCount += 1;
+			if(loopCount >= loopCountTotal) {
+				break;
+			}
+			
+			try {
+				Thread.sleep(interval);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		waitForResponse = false;
+	}
 	
 //	private void waitForReply() {
 //		try {

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="DPScopeApp/javahidapi"/>
+	<classpathentry kind="src" path="DPScopeApp/src"/>
+	<classpathentry kind="lib" path="DPScopeApp/commons-lang3-3.6.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="libs/jfreechart-1.0.19-demo.jar"/>
+	<classpathentry kind="lib" path="libs/jna-4.0.0.jar"/>
+	<classpathentry kind="lib" path="libs/purejavahidapi-src.jar"/>
+	<classpathentry kind="lib" path="libs/purejavahidapi.jar"/>
+	<classpathentry kind="lib" path="libs/jfreechart-1.0.19.jar"/>
+	<classpathentry kind="lib" path="libs/jcommon-1.0.23.jar"/>
+	<classpathentry kind="output" path="DPScopeApp/bin"/>
+</classpath>
