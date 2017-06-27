@@ -31,19 +31,20 @@ public class DPScope {
 	private final static byte ADC_ACQ = (byte) ((128 + ACQT * 8 + ADCS) & 0xff);
 
 	private static float usbSupplyVoltage = 0.0f;
-	private static boolean gotVoltage = false;
+
 
 	private HidDevice hidDev;
 	private HidDeviceInfo devInfo;
 
 	public boolean isDone;
 	public boolean isReady;
+	public boolean actionOngoing = false;
 	
 	protected Command currCmd;
 
 	volatile static boolean deviceOpen;
 
-	private Byte[] txBuf;
+	private volatile byte[] txBuf;
 	private int length;
 
 	private volatile int signalCh1;
@@ -51,7 +52,8 @@ public class DPScope {
 	
 	private List<Byte[]> commandList = new ArrayList<Byte[]>();
 	private boolean waitForResponse = false;
-	private List<BootAction> actionList;
+	private List<BootAction> actionList = new ArrayList<BootAction>();
+	
 
 	private enum Command {
 		CMD_IDLE,
@@ -77,7 +79,7 @@ public class DPScope {
 
 	public DPScope() {
 		devInfo = null;
-		txBuf = new Byte[20];
+		txBuf = new byte[20];
 		length = 1;
 		deviceOpen = false;
 		isDone = false;
@@ -85,7 +87,6 @@ public class DPScope {
 		currCmd = Command.CMD_IDLE;
 		signalCh1 = 0;
 		signalCh2 = 0;
-		usbSupplyVoltage = 0;
 	}
 
 	public boolean isDevicePresent() {
@@ -114,7 +115,7 @@ public class DPScope {
 		if (devInfo != null) {
 			deviceOpen = true;
 			isReady = true;
-			processCmd.start();
+//			processCmd.start();
 			try {
 				hidDev = PureJavaHidApi.openDevice(devInfo);
 				hidDev.setDeviceRemovalListener(new DeviceRemovalListener() {
@@ -224,7 +225,6 @@ public class DPScope {
 							usbSupplyVoltage += ((int) (rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF));
 							usbSupplyVoltage = (float) 4.096 * 1023 / usbSupplyVoltage;
 							isReady = true;
-							gotVoltage = true;
 							break;
 						default:
 							break;
@@ -249,94 +249,143 @@ public class DPScope {
 
 	// CMD_PING (2) - get device name
 	public void ping() {
-		txBuf[0] = 0x02;
-		length = 1;
-		currCmd = Command.CMD_PING;
-		queueCommand();
-		// System.out.printf("%d bytes sent\n", sentBytes);
+		actionList.add(new BootAction() {			
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x02;
+				length = 1;
+				currCmd = Command.CMD_PING;
+				return false;
+			}
+		});
 	}
 
 	// CMD_REVISION (3) - get fw version
 	public void getFwVersion() {
-		txBuf[0] = 0x03;
-		length = 1;
-		currCmd = Command.CMD_REVISION;
-		queueCommand();
+		actionList.add(new BootAction() {
+			
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x03;
+				length = 1;
+				currCmd = Command.CMD_REVISION;
+				return false;
+			}
+		});
 	}
 
 	// CMD_ARM (5) - Sets all acquisition parameters and arms scope
-	public void armScope(byte ch1, byte ch2) {
-		txBuf[0] = 0x05;
-		txBuf[1] = ch1; // channel1
-		txBuf[2] = ch2; // channel2
-		txBuf[3] = ADC_ACQ;
-		txBuf[4] = 0x00; // timer MSB
-		txBuf[5] = 0x10; // timer LSB
-		txBuf[6] = 0x01; // prescaler bypass (0 = use prescaler, 1 = bypass
-							// prescaler)
-		txBuf[7] = 0x00; // prescaler selection as power of 2 (7=div256, 0=div2)
-		txBuf[8] = (byte) 2; // sample shift first channel
-		txBuf[9] = (byte) 2; // sample shift second channel
-		txBuf[10] = (byte) 0; // sample subtract first channel
-		txBuf[11] = (byte) 0; // sample subtract second channel
-		txBuf[12] = 0x00; // trigger source (0 = auto, 1 = triggered)
-		txBuf[13] = 0x00; // trigger polarity (0 = falling edge, 1 = rising
-							// edge)
-		txBuf[14] = 0x00; // trigger level MSB (currently not used)
-		txBuf[15] = 0x10; // trigger level LSB (only applicable if triggering on
-		// CH1, not for ext. trigger)
-		txBuf[16] = 0x00; // sampling mode: (0 = real time, 1 = equivalent time)
-		txBuf[17] = 0x10; // equivalent time sample interval in 0.5 usec
-		// increments
-		txBuf[18] = (byte) (txBuf[17] >> 2); // equivalent time trigger
-		// stability check period (half
-		// of byte 17 value is a good
-		// choice)
-		txBuf[19] = 0x01; // trigger channel to use (1 = CH1 gain 1, 2 = CH1
-		// gain 10, 3 = ext. trigger)
-		length = 20;
-		currCmd = Command.CMD_ARM;
-		queueCommand();
+	public synchronized void armScope(byte ch1, byte ch2) {
+		actionList.add(new BootAction() {		
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x05;
+				txBuf[1] = ch1; // channel1
+				txBuf[2] = ch2; // channel2
+				txBuf[3] = ADC_ACQ;
+				txBuf[4] = 0x00; // timer MSB
+				txBuf[5] = 0x10; // timer LSB
+				txBuf[6] = 0x01; // prescaler bypass (0 = use prescaler, 1 = bypass
+									// prescaler)
+				txBuf[7] = 0x00; // prescaler selection as power of 2 (7=div256, 0=div2)
+				txBuf[8] = (byte) 2; // sample shift first channel
+				txBuf[9] = (byte) 2; // sample shift second channel
+				txBuf[10] = (byte) 0; // sample subtract first channel
+				txBuf[11] = (byte) 0; // sample subtract second channel
+				txBuf[12] = 0x00; // trigger source (0 = auto, 1 = triggered)
+				txBuf[13] = 0x00; // trigger polarity (0 = falling edge, 1 = rising
+									// edge)
+				txBuf[14] = 0x00; // trigger level MSB (currently not used)
+				txBuf[15] = 0x10; // trigger level LSB (only applicable if triggering on
+				// CH1, not for ext. trigger)
+				txBuf[16] = 0x00; // sampling mode: (0 = real time, 1 = equivalent time)
+				txBuf[17] = 0x10; // equivalent time sample interval in 0.5 usec
+				// increments
+				txBuf[18] = (byte) (txBuf[17] >> 2); // equivalent time trigger
+				// stability check period (half
+				// of byte 17 value is a good
+				// choice)
+				txBuf[19] = 0x01; // trigger channel to use (1 = CH1 gain 1, 2 = CH1
+				// gain 10, 3 = ext. trigger)
+				length = 20;
+				currCmd = Command.CMD_ARM;
+				sendNoWait();
+				return false;
+			}
+		});
+//		startQueueIfStopped();
 	}
 
 	// CMD_DONE (6) - Query whether scope has already finished the acquisition
 	public void queryIfDone() {
-		txBuf[0] = 0x06;
-		length = 1;
-		currCmd = Command.CMD_DONE;
-		isDone = false;
-		queueCommand();
+		actionList.add(new BootAction() {		
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x06;
+				length = 1;
+				currCmd = Command.CMD_DONE;
+				isDone = false;
+				sendAndWait();				
+				return false;
+			}
+		});
 	}
 
-	// CMD_ABORT (7) - Disarms the scope, so it's read for a new command
+	// CMD_ABORT (7) - Disarms the scope, so it's ready for a new command
 	public void abort() {
-		txBuf[0] = 0x07;
-		length = 1;
-		currCmd = Command.CMD_ABORT;
-		queueCommand();
+		actionList.add(new BootAction() {
+			
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x07;
+				length = 1;
+				currCmd = Command.CMD_ABORT;
+				return false;
+			}
+		});
 	}
 
 	// CMD_READBACK (8) - Initiates read-back of acquired txBuf record
 	public void readBack(int block) {
-		txBuf[0] = 0x08;
-		txBuf[1] = (byte) block;
-		isDone = false;
-		length = 2;
-		currCmd = Command.CMD_READBACK;
-		queueCommand();
+		actionList.add(new BootAction() {		
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x08;
+				txBuf[1] = (byte) block;
+				isDone = false;
+				length = 2;
+				currCmd = Command.CMD_READBACK;
+				sendAndWait();
+				return false;
+			}
+		});
+		startQueueIfStopped();
 	}
 
 	// CMD_READADC (9) - Reads back ADC directly (with 10 bit resolution,
 	// returns 2 bytes per channel)
 	public void readADC(byte ch1, byte ch2) {
-		buildCmdReadAdc(ch1, ch2);
-		queueCommand();
+		actionList.add(new BootAction() {			
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				buildCmdReadAdc(ch1, ch2);
+				sendAndWait();
+				return false;
+			}
+		});
+		startQueueIfStopped();
 	}
 
 	public void readADCDirect(byte ch1, byte ch2) {
 		buildCmdReadAdc(ch1, ch2);
-//		(Arrays.copyOfRange(txBuf, 0, length));
-		hidDev.setOutputReport((byte) 0, ArrayUtils.toPrimitive(Arrays.copyOfRange(txBuf, 0, length)), length);
+		hidDev.setOutputReport((byte) 0, txBuf, length);
 	}
 
 	private void buildCmdReadAdc(byte ch1, byte ch2) {
@@ -357,7 +406,8 @@ public class DPScope {
 		txBuf[1] = (byte) ((onOff) ? 1 : 0);
 		length = 2;
 		currCmd = Command.CMD_STATUS_LED;
-		queueCommand();
+		sendNoWait();
+//		queueCommand();
 	}
 
 	// CMD_WRITE_MEM (11) - Writes a byte to a memory location on the
@@ -399,34 +449,56 @@ public class DPScope {
 	// CMD_READ_EEPROM (14) - Read a memory location on the microcontroller’s
 	// txBuf EEPROM
 	public void readEEPROM(byte addrMSB, byte addrLSB) {
-		txBuf[0] = 0x0E;
-		txBuf[1] = addrMSB;
-		txBuf[2] = addrLSB;
-		length = 3;
-		currCmd = Command.CMD_READ_EEPROM;
-		queueCommand();
+		actionList.add(new BootAction() {
+			
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x0E;
+				txBuf[1] = addrMSB;
+				txBuf[2] = addrLSB;
+				length = 3;
+				currCmd = Command.CMD_READ_EEPROM;
+				sendAndWait();
+				return false;
+			}
+		});
 	}
 
 	// CMD_READ_LA (15) - Reads back the state of the logic analyzer pins (port
 	// B)
 	public void readLogicAnalyzer() {
-		txBuf[0] = 0x0F;
-		txBuf[1] = 0x05;
-		txBuf[2] = 0x08;
-		txBuf[3] = ADC_ACQ;
-		length = 4;
-		currCmd = Command.CMD_READ_LA;
-		queueCommand();
+		actionList.add(new BootAction() {		
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x0F;
+				txBuf[1] = 0x05;
+				txBuf[2] = 0x08;
+				txBuf[3] = ADC_ACQ;
+				length = 4;
+				currCmd = Command.CMD_READ_LA;
+				sendAndWait();
+				return false;
+			}
+		});
 	}
 
 	// CMD_ARM_LA (16) - Sets logic analyzer acquisition parameters
 	public void armLogicAnalyzer(byte sampleRate, byte triggerCond) {
-		txBuf[0] = 0x10;
-		txBuf[1] = sampleRate;
-		txBuf[2] = triggerCond;
-		length = 3;
-		currCmd = Command.CMD_ARM_LA;
-		queueCommand();
+		actionList.add(new BootAction() {
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x10;
+				txBuf[1] = sampleRate;
+				txBuf[2] = triggerCond;
+				length = 3;
+				currCmd = Command.CMD_ARM_LA;
+				sendAndWait();
+				return false;
+			}
+		});
 	}
 
 	// CMD_INIT (17) - Re-initialize microcontroller
@@ -435,25 +507,39 @@ public class DPScope {
 		txBuf[1] = (byte) ((blinkLED) ? (0x01) : (0x00));
 		length = 2;
 		currCmd = Command.CMD_INIT;
-		queueCommand();
+		sendNoWait();
 	}
 
 	// CMD_SERIAL_INIT (18) - Initialize external trigger pin for serial txBuf
 	// output
 	public void serialInit() {
-		txBuf[0] = 0x12;
-		length = 1;
-		currCmd = Command.CMD_SERIAL_INIT;
-		queueCommand();
+		actionList.add(new BootAction() {			
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x12;
+				length = 1;
+				currCmd = Command.CMD_SERIAL_INIT;
+				sendAndWait();
+				return false;
+			}
+		});
 	}
 
 	// CMD_SERIAL_TX (19) - Send one byte over trigger pin at 9600 baud
 	public void serialByteTx(byte serialByte) {
-		txBuf[0] = 0x13;
-		txBuf[1] = serialByte;
-		length = 2;
-		currCmd = Command.CMD_SERIAL_TX;
-		queueCommand();
+		actionList.add(new BootAction() {			
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x13;
+				txBuf[1] = serialByte;
+				length = 2;
+				currCmd = Command.CMD_SERIAL_TX;
+				sendAndWait();
+				return false;
+			}
+		});
 	}
 
 	public void checkUsbSupply(int count) {
@@ -462,25 +548,23 @@ public class DPScope {
 			public boolean go() throws Exception {
 				float avgVolts = 0.0f;
 				for(int i=0;i<count;i++){
-					checkUsbSupplyDirect();
-					waitForResponse();
+					waitForResponse  = true;
+//					readADCDirect(CH_BATTERY, CH_BATTERY);
+					buildCmdReadAdc(CH_BATTERY, CH_BATTERY);
+					sendAndWait();
 					avgVolts += getUSBVoltage();
 				}
+				System.out.println("Batt voltage: " + avgVolts / count);
 				return false;
 			}
 		});
 		startQueueIfStopped();
 	}
 
-	private void startQueueIfStopped() {
+	private synchronized void startQueueIfStopped() {
 		if(!processAction.isAlive()){
 			processAction.start();
 		}
-	}
-
-	public void checkUsbSupplyDirect() {
-		waitForResponse  = true;
-		readADCDirect(CH_BATTERY, CH_BATTERY);
 	}
 
 	// CMD_CHECK_USB_SUPPLY - Read ADC channel associated with USB supply
@@ -492,7 +576,7 @@ public class DPScope {
 	}
 
 	private void queueCommand() {
-		commandList.add((Arrays.copyOfRange(txBuf, 0, length)));
+//		commandList.add(txBuf, 0, length);
 	}
 	
 	Thread processCmd = new Thread() {
@@ -503,8 +587,8 @@ public class DPScope {
 	        	while(deviceOpen){
 	        		if(isReady && (commandList.size() > 0)){
 	        			isReady = false;
-	        			currentCmd = ArrayUtils.toPrimitive(commandList.get(commandList.size()-1));
-	        			commandList.remove(commandList.size() - 1);        			
+	        			currentCmd = ArrayUtils.toPrimitive(commandList.get(0));
+	        			commandList.remove(0);        			
 	        			hidDev.setOutputReport((byte) 0, currentCmd, currentCmd.length);
 	        			if(waitForResponse){
 	        				waitForResponse();
@@ -526,13 +610,16 @@ public class DPScope {
 	        	while(deviceOpen){
 	        		if(isReady && (actionList.size() > 0)){
 	        			isReady = false;
+	        			actionOngoing = true;
         				try {
 							actionList.get(0).go();
 						} catch (Exception e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
+        				actionList.remove(0);
 	        		} else {
+	        			actionOngoing = false;
 	        			Thread.sleep(10);
 	        		}
 	        		
@@ -582,7 +669,27 @@ public class DPScope {
 //			e.printStackTrace();
 //		}
 //	}
+	
+	private void queueAction(){ // to be implemented....
+		actionList.add(new BootAction() {
+			
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				return false;
+			}
+		});
+	}
+	
+	private void sendAndWait() {
+		hidDev.setOutputReport((byte) 0, txBuf, length);
+		waitForResponse();
+	}
 
+	private void sendNoWait() {
+		hidDev.setOutputReport((byte) 0, txBuf, length);
+	}
+	
 	public int getSignalCh1() {
 		return signalCh1;
 	}
@@ -592,8 +699,6 @@ public class DPScope {
 	}
 
 	public float getUSBVoltage() {
-		while(!gotVoltage);
-		gotVoltage = false;
 		return usbSupplyVoltage;
 	}
 }
