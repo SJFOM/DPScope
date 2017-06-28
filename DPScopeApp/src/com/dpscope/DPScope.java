@@ -50,10 +50,28 @@ public class DPScope {
 
 	private List<Byte[]> commandList = new ArrayList<Byte[]>();
 	private boolean waitForResponse = false;
-	private List<BootAction> actionList = new ArrayList<BootAction>();
+	public List<BootAction> actionList = new ArrayList<BootAction>();
 
 	private enum Command {
-		CMD_IDLE, CMD_PING, CMD_REVISION, CMD_ARM, CMD_DONE, CMD_ABORT, CMD_READBACK, CMD_READADC, CMD_STATUS_LED, CMD_WRITE_MEM, CMD_READ_MEM, CMD_WRITE_EEPROM, CMD_READ_EEPROM, CMD_READ_LA, CMD_ARM_LA, CMD_INIT, CMD_SERIAL_INIT, CMD_SERIAL_TX, CMD_CHECK_USB_SUPPLY;
+		CMD_IDLE,
+		CMD_PING,
+		CMD_REVISION,
+		CMD_ARM,
+		CMD_DONE,
+		CMD_ABORT,
+		CMD_READBACK,
+		CMD_READADC,
+		CMD_STATUS_LED,
+		CMD_WRITE_MEM,
+		CMD_READ_MEM,
+		CMD_WRITE_EEPROM,
+		CMD_READ_EEPROM,
+		CMD_READ_LA,
+		CMD_ARM_LA,
+		CMD_INIT,
+		CMD_SERIAL_INIT,
+		CMD_SERIAL_TX,
+		CMD_CHECK_USB_SUPPLY;
 	}
 
 	public DPScope() {
@@ -93,7 +111,6 @@ public class DPScope {
 	public void connect() {
 		if (devInfo != null) {
 			deviceOpen = true;
-			isReady = true;
 			// processCmd.start();
 			try {
 				hidDev = PureJavaHidApi.openDevice(devInfo);
@@ -118,11 +135,11 @@ public class DPScope {
 								// TODO Auto-generated catch block
 								e.printStackTrace();
 							}
-							isReady = true;
+//							isReady = true;
 							break;
 						case CMD_REVISION:
 							System.out.printf("Fw version: v%d.%d", rxBuf[0], rxBuf[1]);
-							isReady = true;
+//							isReady = true;
 							break;
 						case CMD_ARM:
 							System.out.println("Scope Armed...");
@@ -132,12 +149,12 @@ public class DPScope {
 								System.out.printf("Current acquisition %s acquired\n",
 										(rxBuf[0] > 0) ? ("is now") : "not");
 								isDone = true;
-								isReady = true;
+//								isReady = true;
 							}
 							break;
 						case CMD_ABORT:
 							System.out.print("Scope disarmed");
-							isReady = true;
+//							isReady = true;
 							break;
 						case CMD_READBACK:
 							System.out.print("Readback rxBuf - to be implemented\n");
@@ -153,28 +170,28 @@ public class DPScope {
 							signalCh2 = ch2 / 32;
 							System.out.println("Channel 1 -> " + signalCh1);
 							System.out.println("Channel 2 -> " + signalCh2);
-							isReady = true;
+//							isReady = true;
 							break;
 						case CMD_READADC:
 							signalCh1 = ((int) ((rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF)) - 511);
 							signalCh2 = ((int) ((rxBuf[2] & 0xFF) * 256 + (rxBuf[3] & 0xFF)) - 511);
-							isReady = true;
+//							isReady = true;
 							break;
 						case CMD_WRITE_MEM:
 							System.out.print("Write to SFR memory - to be implemented");
-							isReady = true;
+//							isReady = true;
 							break;
 						case CMD_READ_MEM:
 							System.out.print("Read from SFR memory - to be implemented");
-							isReady = true;
+//							isReady = true;
 							break;
 						case CMD_WRITE_EEPROM:
 							System.out.print("Write to EEPROM memory - to be implemented");
-							isReady = true;
+//							isReady = true;
 							break;
 						case CMD_READ_EEPROM:
 							System.out.print("Read from EEPROM memory - to be implemented");
-							isReady = true;
+//							isReady = true;
 							break;
 						case CMD_READ_LA:
 							System.out.println("Read Logic Analyzer pins - to be implemented");
@@ -184,21 +201,21 @@ public class DPScope {
 							System.out.printf("Pin 3: %d\n", (twosCompConvert & 0x20) >> 5);
 							System.out.printf("Pin 2: %d\n", (twosCompConvert & 0x40) >> 6);
 							System.out.printf("Pin 1: %d\n", (twosCompConvert & 0x80 >> 7));
-							isReady = true;
+//							isReady = true;
 							break;
 						case CMD_ARM_LA:
 							System.out.print("Arm Logic Analyzer pins - to be implemented");
-							isReady = true;
+//							isReady = true;
 							break;
 						case CMD_CHECK_USB_SUPPLY:
 							usbSupplyVoltage = (float) 4.096 * 1023
 									/ ((int) (rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF));
-							isReady = true;
 							break;
 						default:
 							break;
 						}
 						currCmd = Command.CMD_IDLE;
+						isReady = true;
 					}
 				});
 
@@ -586,7 +603,7 @@ public class DPScope {
 		public void run() {
 			try {
 				while (deviceOpen) {
-					if (isReady && (actionList.size() > 0)) {
+					if ((isReady && (actionList.size() > 1)) || actionList.size() == 1) {
 						isReady = false;
 						actionOngoing = true;
 						try {
@@ -598,7 +615,7 @@ public class DPScope {
 						actionList.remove(0);
 					} else {
 						actionOngoing = false;
-						Thread.sleep(10);
+						Thread.sleep(100);
 					}
 
 					if (actionList.size() == 0) {
@@ -660,6 +677,7 @@ public class DPScope {
 	}
 
 	private void sendAndWait() {
+		isReady = false;
 		hidDev.setOutputReport((byte) 0, txBuf, length);
 		waitForResponse();
 	}
