@@ -42,9 +42,6 @@ public class DTSCTest extends ApplicationFrame {
 	private Timer timer;
 
 	private static DPScope myScope;
-	private static byte adcAcq;
-	private static byte ACQT;
-	private static byte ADCS;
 
 	private static float[] lastData = new float[1];
 
@@ -132,8 +129,9 @@ public class DTSCTest extends ApplicationFrame {
 					// lastData[0] =
 					// runScan_ScopeMode(("Ch1".equals(channelSelect.getSelectedItem()))
 					// ? (1) : (2));
-					lastData[0] = runScan_RollMode(("Ch1".equals(channelSelect.getSelectedItem())) ? (1) : (2), false);
+//					lastData[0] = runScan_RollMode(("Ch1".equals(channelSelect.getSelectedItem())) ? (1) : (2), false);
 				}
+				lastData[0] = randomValue();
 				dataset.advanceTime();
 				dataset.appendData(lastData);
 			}
@@ -209,10 +207,6 @@ public class DTSCTest extends ApplicationFrame {
 	public static void main(final String[] args) {
 
 		myScope = new DPScope();
-
-		ADCS = 6;
-		ACQT = 3;
-		adcAcq = (byte) (128 + ACQT * 8 + ADCS);
 
 		EventQueue.invokeLater(new Runnable() {
 			@Override
