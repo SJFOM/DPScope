@@ -12,7 +12,7 @@ public class TestApp {
 			System.out.println("Starting");
 			int i = 0;
 			currTime = System.nanoTime();
-			for (; i < 1000; i++) {
+			for (; i < 10; i++) {
 				myScope.readADC(DPScope.CH1_1, DPScope.CH2_1);				
 				while (!myScope.isReady);
 //				System.out.println(myScope.isReady);

@@ -82,6 +82,7 @@ public class DPScope {
 		deviceOpen = false;
 		isDone = false;
 		isReady = false;
+		continuous = false;
 		currCmd = Command.CMD_IDLE;
 		signalCh1 = 0;
 		signalCh2 = 0;
@@ -621,7 +622,7 @@ public class DPScope {
 						if (!continuous) {
 							actionList.remove(0);
 						}
-						actionList.remove(0);
+//						actionList.remove(0);
 					} else {
 						actionOngoing = false;
 						Thread.sleep(100);
