@@ -84,7 +84,7 @@ public class DTSCTest extends ApplicationFrame {
 						myScope.connect();
 						timer.start();
 						// myScope.checkUsbSupply();
-						myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
+						// myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
 						connect.setText(DISCONNECT);
 						run.setText(STOP);
 					}
@@ -123,20 +123,33 @@ public class DTSCTest extends ApplicationFrame {
 
 			// float[] newData = new float[1];
 
+			private boolean runOnce;
+
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (DISCONNECT.equals(connect.getText()) && !myScope.continuous) {
-					myScope.readADCStartContinuous((byte) 2, (byte) 2, true);
+				if (DISCONNECT.equals(connect.getText())) {
+					// myScope.readADCStartContinuous((byte) 2, (byte) 2, true);
 					// lastData[0] =
 					// runScan_ScopeMode(("Ch1".equals(channelSelect.getSelectedItem()))
 					// ? (1) : (2));
 					// lastData[0] =
 					// runScan_RollMode(("Ch1".equals(channelSelect.getSelectedItem()))
 					// ? (1) : (2), false);
+					if ((myScope.actionList.size() == 0) || (runOnce = true)) {
+						lastData[0] = runScan_RollMode(("Ch1".equals(channelSelect.getSelectedItem())) ? (1) : (2),
+								false);
+						runOnce = false;
+					} else {
+						lastData[0] = 12;
+					}
 				}
-				if (myScope.continuous) {
-					lastData[0] = runScan_RollMode(("Ch1".equals(channelSelect.getSelectedItem())) ? (1) : (2), false);
-				}
+				// if (myScope.continuous && myScope.isReady) {
+				// lastData[0] =
+				// runScan_RollMode(("Ch1".equals(channelSelect.getSelectedItem()))
+				// ? (1) : (2), false);
+				// } else {
+				// lastData[0] = 12;
+				// }
 				// lastData[0] = randomValue();
 				dataset.advanceTime();
 				dataset.appendData(lastData);
@@ -195,18 +208,16 @@ public class DTSCTest extends ApplicationFrame {
 
 	public float runScan_RollMode(int channel, boolean battRead) {
 		float[] newData = new float[1];
-		if (myScope.isReady) {
-			if (channel == 1) {
-				newData[0] = myScope.getSignalCh1();
-			} else {
-				newData[0] = myScope.getSignalCh2();
-			}
-			System.out.println("newData: " + newData[0]);
-			// if (battRead) {
-			// myScope.readADC(DPScope.CH_BATTERY, DPScope.CH_BATTERY);
-			// } else {
-			// myScope.readADC(DPScope.CH1_1, DPScope.CH2_1);
-			// }
+		if (channel == 1) {
+			newData[0] = myScope.getSignalCh1();
+		} else {
+			newData[0] = myScope.getSignalCh2();
+		}
+		// System.out.println("newData: " + newData[0]);
+		if (battRead) {
+			myScope.readADC(DPScope.CH_BATTERY, DPScope.CH_BATTERY);
+		} else {
+			myScope.readADC(DPScope.CH1_1, DPScope.CH2_1);
 		}
 		return newData[0];
 	}

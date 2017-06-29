@@ -175,8 +175,8 @@ public class DPScope {
 //							isReady = true;
 							break;
 						case CMD_READADC:
-							signalCh1 = ((int) ((rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF)) - 511);
-							signalCh2 = ((int) ((rxBuf[2] & 0xFF) * 256 + (rxBuf[3] & 0xFF)) - 511);
+							signalCh1 = ((int) (((rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF)) & 0xFF) - 511);
+							signalCh2 = ((int) (((rxBuf[2] & 0xFF) * 256 + (rxBuf[3] & 0xFF)) & 0xff) - 511);
 							isReady = true;
 							break;
 						case CMD_WRITE_MEM:
@@ -381,6 +381,7 @@ public class DPScope {
 
 	public void readADCStartContinuous(byte ch1, byte ch2, boolean onOff) {
 		continuous = onOff;
+		isReady = true;
 		readADC(ch1, ch2);
 	}
 
@@ -610,7 +611,7 @@ public class DPScope {
 		public void run() {
 			try {
 				while (deviceOpen) {
-					if ((isReady && (actionList.size() > 1)) || actionList.size() == 1) {
+					if ((isReady && (actionList.size() > 1)) || (actionList.size() == 1)) {
 						isReady = false;
 						actionOngoing = true;
 						try {
@@ -619,10 +620,10 @@ public class DPScope {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						if (!continuous) {
-							actionList.remove(0);
-						}
-//						actionList.remove(0);
+//						if ((!continuous) && (actionList.size() != 1)) {
+//							actionList.remove(0);
+//						}
+						actionList.remove(0);
 					} else {
 						actionOngoing = false;
 						Thread.sleep(100);
