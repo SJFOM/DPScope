@@ -24,4 +24,26 @@
       </plugin>
     </plugins>
   </build>
+  <dependencies>
+  	<dependency>
+  		<groupId>org.apache.commons</groupId>
+  		<artifactId>commons-lang3</artifactId>
+  		<version>3.6</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>net.java.dev.jna</groupId>
+  		<artifactId>jna</artifactId>
+  		<version>4.4.0</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.jfree</groupId>
+  		<artifactId>jfreechart</artifactId>
+  		<version>1.0.19</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.jfree</groupId>
+  		<artifactId>jcommon</artifactId>
+  		<version>1.0.24</version>
+  	</dependency>
+  </dependencies>
 </project>
