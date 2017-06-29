@@ -51,6 +51,7 @@ public class DPScope {
 	private List<Byte[]> commandList = new ArrayList<Byte[]>();
 	private boolean waitForResponse = false;
 	public List<BootAction> actionList = new ArrayList<BootAction>();
+	public boolean continuous;
 
 	private enum Command {
 		CMD_IDLE,
@@ -175,7 +176,7 @@ public class DPScope {
 						case CMD_READADC:
 							signalCh1 = ((int) ((rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF)) - 511);
 							signalCh2 = ((int) ((rxBuf[2] & 0xFF) * 256 + (rxBuf[3] & 0xFF)) - 511);
-//							isReady = true;
+							isReady = true;
 							break;
 						case CMD_WRITE_MEM:
 							System.out.print("Write to SFR memory - to be implemented");
@@ -215,7 +216,7 @@ public class DPScope {
 							break;
 						}
 						currCmd = Command.CMD_IDLE;
-						isReady = true;
+//						isReady = true;
 					}
 				});
 
@@ -375,6 +376,11 @@ public class DPScope {
 			}
 		});
 		startQueueIfStopped();
+	}
+
+	public void readADCStartContinuous(byte ch1, byte ch2, boolean onOff) {
+		continuous = onOff;
+		readADC(ch1, ch2);
 	}
 
 	public void readADCDirect(byte ch1, byte ch2) {
@@ -611,6 +617,9 @@ public class DPScope {
 						} catch (Exception e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
+						}
+						if (!continuous) {
+							actionList.remove(0);
 						}
 						actionList.remove(0);
 					} else {
