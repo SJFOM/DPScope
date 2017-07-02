@@ -3,7 +3,13 @@ package com.dpscope;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.commons.lang3.ArrayUtils;
 
@@ -13,10 +19,10 @@ import purejavahidapi.HidDeviceInfo;
 import purejavahidapi.InputReportListener;
 import purejavahidapi.PureJavaHidApi;
 
-public class DPScope {
+public class DPScope extends Observable {
 
-	final static short VID = (short) 0x04D8;
-	final static short PID = (short) 0xF891;
+	private final static short VID = (short) 0x04D8;
+	private final static short PID = (short) 0xF891;
 
 	protected final static byte CH1_1 = (byte) 5;
 	protected final static byte CH1_10 = (byte) 6;
@@ -34,26 +40,28 @@ public class DPScope {
 	private HidDevice hidDev;
 	private HidDeviceInfo devInfo;
 
-	public boolean isDone;
-	public boolean isReady;
-	public boolean actionOngoing = false;
+	public boolean isDone = false;
+	public boolean isReady = false;
 
 	private Command currCmd;
 
-	volatile static boolean deviceOpen;
+	volatile static boolean deviceOpen = false;
 
-	private volatile byte[] txBuf;
-	private int length;
+	private volatile byte[] txBuf = new byte[20];
+	private int length = 0;
 
 	private volatile int signalCh1;
 	private volatile int signalCh2;
 
-	private List<Byte[]> commandList = new ArrayList<Byte[]>();
-	private boolean waitForResponse = false;
 	public List<BootAction> actionList = new ArrayList<BootAction>();
-	public boolean continuous;
+	private final ExecutorService pool;
 
-	private enum Command {
+	private float[] channels = new float[2];
+	private boolean run_RollMode = false;
+	
+	public long currTime = 0;
+
+	public static enum Command {
 		CMD_IDLE,
 		CMD_PING,
 		CMD_REVISION,
@@ -74,18 +82,15 @@ public class DPScope {
 		CMD_SERIAL_TX,
 		CMD_CHECK_USB_SUPPLY;
 	}
+	
+	private HashMap<Command, float[]> mapOfArguments = new LinkedHashMap<Command, float[]>();
 
 	public DPScope() {
 		devInfo = null;
-		txBuf = new byte[20];
-		length = 1;
-		deviceOpen = false;
-		isDone = false;
-		isReady = false;
-		continuous = false;
 		currCmd = Command.CMD_IDLE;
 		signalCh1 = 0;
 		signalCh2 = 0;
+		pool = Executors.newSingleThreadExecutor();
 	}
 
 	public boolean isDevicePresent() {
@@ -113,7 +118,7 @@ public class DPScope {
 	public void connect() {
 		if (devInfo != null) {
 			deviceOpen = true;
-			// processCmd.start();
+			isReady = true;
 			try {
 				hidDev = PureJavaHidApi.openDevice(devInfo);
 				hidDev.setDeviceRemovalListener(new DeviceRemovalListener() {
@@ -121,6 +126,7 @@ public class DPScope {
 					public void onDeviceRemoval(HidDevice source) {
 						System.out.println("device removed");
 						deviceOpen = false;
+						isReady = false;
 					}
 				});
 				hidDev.setInputReportListener(new InputReportListener() {
@@ -137,11 +143,11 @@ public class DPScope {
 								// TODO Auto-generated catch block
 								e.printStackTrace();
 							}
-//							isReady = true;
+							// isReady = true;
 							break;
 						case CMD_REVISION:
 							System.out.printf("Fw version: v%d.%d", rxBuf[0], rxBuf[1]);
-//							isReady = true;
+							// isReady = true;
 							break;
 						case CMD_ARM:
 							System.out.println("Scope Armed...");
@@ -151,12 +157,12 @@ public class DPScope {
 								System.out.printf("Current acquisition %s acquired\n",
 										(rxBuf[0] > 0) ? ("is now") : "not");
 								isDone = true;
-//								isReady = true;
+								// isReady = true;
 							}
 							break;
 						case CMD_ABORT:
 							System.out.print("Scope disarmed");
-//							isReady = true;
+							// isReady = true;
 							break;
 						case CMD_READBACK:
 							System.out.print("Readback rxBuf - to be implemented\n");
@@ -172,28 +178,33 @@ public class DPScope {
 							signalCh2 = ch2 / 32;
 							System.out.println("Channel 1 -> " + signalCh1);
 							System.out.println("Channel 2 -> " + signalCh2);
-//							isReady = true;
+							// isReady = true;
 							break;
 						case CMD_READADC:
 							signalCh1 = ((int) (((rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF)) & 0xFF) - 511);
 							signalCh2 = ((int) (((rxBuf[2] & 0xFF) * 256 + (rxBuf[3] & 0xFF)) & 0xff) - 511);
+							channels[0] = signalCh1;
+							channels[1] = signalCh2;
+							setChanged();
+							mapOfArguments.put(Command.CMD_READADC, channels);
+							notifyObservers(mapOfArguments);
 							isReady = true;
 							break;
 						case CMD_WRITE_MEM:
 							System.out.print("Write to SFR memory - to be implemented");
-//							isReady = true;
+							// isReady = true;
 							break;
 						case CMD_READ_MEM:
 							System.out.print("Read from SFR memory - to be implemented");
-//							isReady = true;
+							// isReady = true;
 							break;
 						case CMD_WRITE_EEPROM:
 							System.out.print("Write to EEPROM memory - to be implemented");
-//							isReady = true;
+							// isReady = true;
 							break;
 						case CMD_READ_EEPROM:
 							System.out.print("Read from EEPROM memory - to be implemented");
-//							isReady = true;
+							// isReady = true;
 							break;
 						case CMD_READ_LA:
 							System.out.println("Read Logic Analyzer pins - to be implemented");
@@ -203,11 +214,11 @@ public class DPScope {
 							System.out.printf("Pin 3: %d\n", (twosCompConvert & 0x20) >> 5);
 							System.out.printf("Pin 2: %d\n", (twosCompConvert & 0x40) >> 6);
 							System.out.printf("Pin 1: %d\n", (twosCompConvert & 0x80 >> 7));
-//							isReady = true;
+							// isReady = true;
 							break;
 						case CMD_ARM_LA:
 							System.out.print("Arm Logic Analyzer pins - to be implemented");
-//							isReady = true;
+							// isReady = true;
 							break;
 						case CMD_CHECK_USB_SUPPLY:
 							usbSupplyVoltage = (float) 4.096 * 1023
@@ -217,7 +228,7 @@ public class DPScope {
 							break;
 						}
 						currCmd = Command.CMD_IDLE;
-//						isReady = true;
+						// isReady = true;
 					}
 				});
 
@@ -232,6 +243,7 @@ public class DPScope {
 
 	public void disconnect() {
 		deviceOpen = false;
+		isReady = false;
 		hidDev.close();
 	}
 
@@ -332,18 +344,16 @@ public class DPScope {
 	// CMD_ABORT (7) - Disarms the scope, so it's ready for a new command
 	public void abort() {
 		actionList.add(new BootAction() {
-
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
 				txBuf[0] = 0x07;
 				length = 1;
 				currCmd = Command.CMD_ABORT;
-				sendAndWait();
+				sendNoWait();
 				return false;
 			}
 		});
-		startQueueIfStopped();
 	}
 
 	// CMD_READBACK (8) - Initiates read-back of acquired txBuf record
@@ -372,17 +382,11 @@ public class DPScope {
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
 				buildCmdReadAdc(ch1, ch2);
-				sendAndWait();
+				sendNoWait();
 				return false;
 			}
 		});
 		startQueueIfStopped();
-	}
-
-	public void readADCStartContinuous(byte ch1, byte ch2, boolean onOff) {
-		continuous = onOff;
-		isReady = true;
-		readADC(ch1, ch2);
 	}
 
 	public void readADCDirect(byte ch1, byte ch2) {
@@ -404,12 +408,18 @@ public class DPScope {
 
 	// CMD_STATUS_LED (10) - toggle LED (0 - off, 1 - on)
 	public void toggleLed(boolean onOff) {
-		txBuf[0] = 0x0A;
-		txBuf[1] = (byte) ((onOff) ? 1 : 0);
-		length = 2;
-		currCmd = Command.CMD_STATUS_LED;
-		sendNoWait();
-		// queueCommand();
+		actionList.add(new BootAction() {
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x0A;
+				txBuf[1] = (byte) ((onOff) ? 1 : 0);
+				length = 2;
+				currCmd = Command.CMD_STATUS_LED;
+				sendNoWait();
+				return false;
+			}
+		});
 	}
 
 	// CMD_WRITE_MEM (11) - Writes a byte to a memory location on the
@@ -417,43 +427,63 @@ public class DPScope {
 	// Note: Address range is restricted to Special Function Register (SFR) on
 	// the PIC
 	public void writeMem(byte addrMSB, byte addrLSB, byte dataSFR) {
-		txBuf[0] = 0x0B;
-		txBuf[1] = addrMSB;
-		txBuf[2] = addrLSB;
-		txBuf[3] = dataSFR;
-		length = 4;
-		currCmd = Command.CMD_WRITE_MEM;
-		queueCommand();
+		actionList.add(new BootAction() {
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x0B;
+				txBuf[1] = addrMSB;
+				txBuf[2] = addrLSB;
+				txBuf[3] = dataSFR;
+				length = 4;
+				currCmd = Command.CMD_WRITE_MEM;
+				sendNoWait();
+				return false;
+			}
+		});
 	}
 
 	// CMD_WRITE_MEM (12) - Reads a memory location on the microcontroller's SFR
 	public void readMem(byte addrMSB, byte addrLSB) {
-		txBuf[0] = 0x0C;
-		txBuf[1] = addrMSB;
-		txBuf[2] = addrLSB;
-		length = 3;
-		currCmd = Command.CMD_READ_MEM;
-		queueCommand();
+		actionList.add(new BootAction() {
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x0C;
+				txBuf[1] = addrMSB;
+				txBuf[2] = addrLSB;
+				length = 3;
+				currCmd = Command.CMD_READ_MEM;
+				sendAndWait();
+				return false;
+			}
+		});
 	}
 
 	// CMD_WRITE_EEPROM (13) - Writes a memory location on the
 	// microcontroller’s
 	// txBuf EEPROM
 	public void writeEEPROM(byte addrMSB, byte addrLSB, byte dataEEPROM) {
-		txBuf[0] = 0x0D;
-		txBuf[1] = addrMSB;
-		txBuf[2] = addrLSB;
-		txBuf[3] = dataEEPROM;
-		length = 4;
-		currCmd = Command.CMD_WRITE_EEPROM;
-		queueCommand();
+		actionList.add(new BootAction() {
+			@Override
+			public boolean go() throws Exception {
+				// TODO Auto-generated method stub
+				txBuf[0] = 0x0D;
+				txBuf[1] = addrMSB;
+				txBuf[2] = addrLSB;
+				txBuf[3] = dataEEPROM;
+				length = 4;
+				currCmd = Command.CMD_WRITE_EEPROM;
+				sendNoWait();
+				return false;
+			}
+		});
 	}
 
 	// CMD_READ_EEPROM (14) - Read a memory location on the microcontroller’s
 	// txBuf EEPROM
 	public void readEEPROM(byte addrMSB, byte addrLSB) {
 		actionList.add(new BootAction() {
-
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -551,12 +581,15 @@ public class DPScope {
 			public boolean go() throws Exception {
 				float avgVolts = 0.0f;
 				for (int i = 0; i < count; i++) {
-					waitForResponse = true;
 					// readADCDirect(CH_BATTERY, CH_BATTERY);
 					buildCmdReadAdc(CH_BATTERY, CH_BATTERY);
 					sendAndWait();
 					avgVolts += getUSBVoltage();
 				}
+				setChanged();
+				channels[0] = avgVolts/count;
+				mapOfArguments.put(Command.CMD_CHECK_USB_SUPPLY, channels);
+				notifyObservers(mapOfArguments);
 				System.out.println("Batt voltage: " + avgVolts / count);
 				return false;
 			}
@@ -565,46 +598,37 @@ public class DPScope {
 	}
 
 	private synchronized void startQueueIfStopped() {
-		if (!processAction.isAlive()) {
-			processAction.start();
-		}
+		pool.execute((Runnable) processAction);
 	}
 
 	// CMD_CHECK_USB_SUPPLY - Read ADC channel associated with USB supply
 	// voltage
 	public void checkUsbSupply() {
-		waitForResponse = true;
 		readADC(CH_BATTERY, CH_BATTERY);
 		// return getUSBVoltage();
 	}
 
-	private void queueCommand() {
-		// commandList.add(txBuf, 0, length);
+	public void runScan_RollMode(byte ch1, byte ch2) {
+		
+		this.addObserver(new Observer() {
+			@Override
+			public void update(Observable o, Object arg) {
+				// TODO Auto-generated method stub
+				if (run_RollMode) {
+					readADC(ch1, ch2);
+				}
+				System.out.println("List size: " + actionList.size());
+//				System.out.format("%f\n", (double)(System.nanoTime() - currTime)/1_000_000_000.0);
+//				currTime = System.nanoTime();
+			}
+		});
+		run_RollMode = true;
+		readADC(ch1, ch2);
 	}
 
-	Thread processCmd = new Thread() {
-
-		public void run() {
-			byte[] currentCmd;
-			try {
-				while (deviceOpen) {
-					if (isReady && (commandList.size() > 0)) {
-						isReady = false;
-						currentCmd = ArrayUtils.toPrimitive(commandList.get(0));
-						commandList.remove(0);
-						hidDev.setOutputReport((byte) 0, currentCmd, currentCmd.length);
-						if (waitForResponse) {
-							waitForResponse();
-						}
-					} else {
-						Thread.sleep(10);
-					}
-				}
-			} catch (InterruptedException v) {
-				System.out.println(v);
-			}
-		}
-	};
+	public void stopScan_RollMode() {
+		run_RollMode = false;
+	}
 
 	Thread processAction = new Thread() {
 
@@ -613,26 +637,24 @@ public class DPScope {
 				while (deviceOpen) {
 					if ((isReady && (actionList.size() > 1)) || (actionList.size() == 1)) {
 						isReady = false;
-						actionOngoing = true;
 						try {
 							actionList.get(0).go();
 						} catch (Exception e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-//						if ((!continuous) && (actionList.size() != 1)) {
-//							actionList.remove(0);
-//						}
 						actionList.remove(0);
+
 					} else {
-						actionOngoing = false;
-						Thread.sleep(100);
+						Thread.sleep(1);
 					}
 
 					if (actionList.size() == 0) {
 						break;
 					}
 				}
+				actionList.clear();
+				return;
 			} catch (InterruptedException v) {
 				System.out.println(v);
 			}
@@ -662,8 +684,6 @@ public class DPScope {
 				e.printStackTrace();
 			}
 		}
-
-		waitForResponse = false;
 	}
 
 	// private void waitForReply() {
@@ -675,17 +695,6 @@ public class DPScope {
 	// e.printStackTrace();
 	// }
 	// }
-
-	private void queueAction() { // to be implemented....
-		actionList.add(new BootAction() {
-
-			@Override
-			public boolean go() throws Exception {
-				// TODO Auto-generated method stub
-				return false;
-			}
-		});
-	}
 
 	private void sendAndWait() {
 		isReady = false;

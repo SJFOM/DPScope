@@ -5,6 +5,9 @@ import java.awt.EventQueue;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.LinkedHashMap;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.Random;
 
 import javax.swing.JButton;
@@ -23,6 +26,8 @@ import org.jfree.data.xy.XYDataset;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
 
+import com.dpscope.DPScope.Command;
+
 /** @see http://stackoverflow.com/questions/5048852 */
 public class DTSCTest extends ApplicationFrame {
 
@@ -35,6 +40,9 @@ public class DTSCTest extends ApplicationFrame {
 	private static final String STOP = "Stop";
 	private static final String CONNECT = "Connect";
 	private static final String DISCONNECT = "Disconnect";
+	private static final String SCAN = "Scan";
+	private static final String STOP_SCAN = "Stop Scan";
+	private static final String USB_VOLTAGE = "Get Supply Voltage";
 	private static final int COUNT = 8 * 60;
 	private static final int FAST = 10;
 	private static final int SLOW = FAST * 5;
@@ -44,6 +52,8 @@ public class DTSCTest extends ApplicationFrame {
 	private static DPScope myScope;
 
 	private static float[] lastData = new float[1];
+
+	private LinkedHashMap<Command, float[]> parsedMap;
 
 	public DTSCTest(final String title) {
 		super(title);
@@ -83,11 +93,42 @@ public class DTSCTest extends ApplicationFrame {
 					if (myScope.isDevicePresent()) {
 						myScope.connect();
 						timer.start();
-						// myScope.checkUsbSupply();
-						// myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
 						connect.setText(DISCONNECT);
 						run.setText(STOP);
 					}
+				}
+			}
+		});
+
+		final JButton btnPollData = new JButton(SCAN);
+		btnPollData.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				String cmd = e.getActionCommand();
+				if (SCAN.equals(cmd)) {
+					if (DISCONNECT.equals(connect.getText())) {
+						timer.start();
+						btnPollData.setText(STOP_SCAN);
+						run.setText(STOP);
+						myScope.runScan_RollMode(DPScope.CH1_1, DPScope.CH2_1);
+					}
+				} else {
+					timer.stop();
+					run.setText(START);
+					btnPollData.setText(SCAN);
+					myScope.stopScan_RollMode();
+				}
+			}
+		});
+
+		final JButton getUSBVoltage = new JButton(USB_VOLTAGE);
+		getUSBVoltage.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (myScope.isDevicePresent()) {
+					myScope.checkUsbSupply(10);
 				}
 			}
 		});
@@ -115,41 +156,32 @@ public class DTSCTest extends ApplicationFrame {
 		JPanel btnPanel = new JPanel(new FlowLayout());
 		btnPanel.add(run);
 		btnPanel.add(connect);
+		btnPanel.add(btnPollData);
+		btnPanel.add(getUSBVoltage);
 		btnPanel.add(speed);
 		btnPanel.add(channelSelect);
 		this.add(btnPanel, BorderLayout.SOUTH);
 
-		timer = new Timer(FAST, new ActionListener() {
+		myScope.addObserver(new Observer() {
+			@Override
+			public void update(Observable o, Object arg) {
+				// TODO Auto-generated method stub
+				parsedMap = (LinkedHashMap<Command, float[]>) arg;
+				if (parsedMap.containsKey(Command.CMD_READADC)) {
+					if (("Ch1".equals(channelSelect.getSelectedItem()))) {
+						lastData[0] = parsedMap.get(Command.CMD_READADC)[0];
+					} else {
+						lastData[0] = parsedMap.get(Command.CMD_READADC)[1];
+					}
+				} else if (parsedMap.containsKey(Command.CMD_CHECK_USB_SUPPLY)) {
+					getUSBVoltage.setText(String.valueOf(parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0]) + " V");
+				}
+			}
+		});
 
-			// float[] newData = new float[1];
-
-			private boolean runOnce;
-
+		timer = new Timer(1, new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (DISCONNECT.equals(connect.getText())) {
-					// myScope.readADCStartContinuous((byte) 2, (byte) 2, true);
-					// lastData[0] =
-					// runScan_ScopeMode(("Ch1".equals(channelSelect.getSelectedItem()))
-					// ? (1) : (2));
-					// lastData[0] =
-					// runScan_RollMode(("Ch1".equals(channelSelect.getSelectedItem()))
-					// ? (1) : (2), false);
-					if ((myScope.actionList.size() == 0) || (runOnce = true)) {
-						lastData[0] = runScan_RollMode(("Ch1".equals(channelSelect.getSelectedItem())) ? (1) : (2),
-								false);
-						runOnce = false;
-					} else {
-						lastData[0] = 12;
-					}
-				}
-				// if (myScope.continuous && myScope.isReady) {
-				// lastData[0] =
-				// runScan_RollMode(("Ch1".equals(channelSelect.getSelectedItem()))
-				// ? (1) : (2), false);
-				// } else {
-				// lastData[0] = 12;
-				// }
 				// lastData[0] = randomValue();
 				dataset.advanceTime();
 				dataset.appendData(lastData);
@@ -188,7 +220,7 @@ public class DTSCTest extends ApplicationFrame {
 	public float runScan_ScopeMode(int channel) {
 		float[] newData = new float[1];
 		// if (myScope.isDone) {
-		if (!myScope.actionOngoing) {
+		if (!(myScope.actionList.size() > 0)) {
 			myScope.readBack(0);
 
 			if (channel == 1) {
