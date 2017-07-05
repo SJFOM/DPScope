@@ -5,13 +5,13 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import org.apache.commons.lang3.ArrayUtils;
 
 import purejavahidapi.DeviceRemovalListener;
 import purejavahidapi.HidDevice;
@@ -54,35 +54,23 @@ public class DPScope extends Observable {
 	private volatile int signalCh2;
 
 	public List<BootAction> actionList = new ArrayList<BootAction>();
+	public Queue<BootAction> actionQueue = new LinkedList<BootAction>();
 	private final ExecutorService pool;
 
 	private float[] channels = new float[2];
 	private boolean run_RollMode = false;
-	
+
 	public long currTime = 0;
 
+	public int callCount = 0;
+
+	private byte ch1;
+	private byte ch2;
+
 	public static enum Command {
-		CMD_IDLE,
-		CMD_PING,
-		CMD_REVISION,
-		CMD_ARM,
-		CMD_DONE,
-		CMD_ABORT,
-		CMD_READBACK,
-		CMD_READADC,
-		CMD_STATUS_LED,
-		CMD_WRITE_MEM,
-		CMD_READ_MEM,
-		CMD_WRITE_EEPROM,
-		CMD_READ_EEPROM,
-		CMD_READ_LA,
-		CMD_ARM_LA,
-		CMD_INIT,
-		CMD_SERIAL_INIT,
-		CMD_SERIAL_TX,
-		CMD_CHECK_USB_SUPPLY;
+		CMD_IDLE, CMD_PING, CMD_REVISION, CMD_ARM, CMD_DONE, CMD_ABORT, CMD_READBACK, CMD_READADC, CMD_STATUS_LED, CMD_WRITE_MEM, CMD_READ_MEM, CMD_WRITE_EEPROM, CMD_READ_EEPROM, CMD_READ_LA, CMD_ARM_LA, CMD_INIT, CMD_SERIAL_INIT, CMD_SERIAL_TX, CMD_CHECK_USB_SUPPLY;
 	}
-	
+
 	private HashMap<Command, float[]> mapOfArguments = new LinkedHashMap<Command, float[]>();
 
 	public DPScope() {
@@ -119,6 +107,23 @@ public class DPScope extends Observable {
 		if (devInfo != null) {
 			deviceOpen = true;
 			isReady = true;
+			this.addObserver(new Observer() {
+
+				@Override
+				public void update(Observable o, Object arg) {
+					// TODO Auto-generated method stub
+					if (run_RollMode) {
+						readADC(ch1, ch2);
+					}
+					System.out.println("List size: " + actionQueue.size());
+					// System.out.format("%f\n", (double)(System.nanoTime() -
+					// currTime)/1_000_000_000.0);
+					// currTime = System.nanoTime();
+					// callCount++;
+					// System.out.println(callCount + " times");
+				}
+			});
+
 			try {
 				hidDev = PureJavaHidApi.openDevice(devInfo);
 				hidDev.setDeviceRemovalListener(new DeviceRemovalListener() {
@@ -185,10 +190,11 @@ public class DPScope extends Observable {
 							signalCh2 = ((int) (((rxBuf[2] & 0xFF) * 256 + (rxBuf[3] & 0xFF)) & 0xff) - 511);
 							channels[0] = signalCh1;
 							channels[1] = signalCh2;
-							setChanged();
 							mapOfArguments.put(Command.CMD_READADC, channels);
+							setChanged();
 							notifyObservers(mapOfArguments);
 							isReady = true;
+							callCount = 0;
 							break;
 						case CMD_WRITE_MEM:
 							System.out.print("Write to SFR memory - to be implemented");
@@ -244,12 +250,13 @@ public class DPScope extends Observable {
 	public void disconnect() {
 		deviceOpen = false;
 		isReady = false;
+		this.deleteObservers();
 		hidDev.close();
 	}
 
 	// CMD_PING (2) - get device name
 	public void ping() {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -263,7 +270,7 @@ public class DPScope extends Observable {
 
 	// CMD_REVISION (3) - get fw version
 	public void getFwVersion() {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 
 			@Override
 			public boolean go() throws Exception {
@@ -278,7 +285,7 @@ public class DPScope extends Observable {
 
 	// CMD_ARM (5) - Sets all acquisition parameters and arms scope
 	public void armScope(byte ch1, byte ch2) {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -326,7 +333,7 @@ public class DPScope extends Observable {
 
 	// CMD_DONE (6) - Query whether scope has already finished the acquisition
 	public void queryIfDone() {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -343,7 +350,7 @@ public class DPScope extends Observable {
 
 	// CMD_ABORT (7) - Disarms the scope, so it's ready for a new command
 	public void abort() {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -358,7 +365,7 @@ public class DPScope extends Observable {
 
 	// CMD_READBACK (8) - Initiates read-back of acquired txBuf record
 	public void readBack(int block) {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -377,7 +384,7 @@ public class DPScope extends Observable {
 	// CMD_READADC (9) - Reads back ADC directly (with 10 bit resolution,
 	// returns 2 bytes per channel)
 	public void readADC(byte ch1, byte ch2) {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -386,7 +393,7 @@ public class DPScope extends Observable {
 				return false;
 			}
 		});
-		startQueueIfStopped();
+		// startQueueIfStopped();
 	}
 
 	public void readADCDirect(byte ch1, byte ch2) {
@@ -408,7 +415,7 @@ public class DPScope extends Observable {
 
 	// CMD_STATUS_LED (10) - toggle LED (0 - off, 1 - on)
 	public void toggleLed(boolean onOff) {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -427,7 +434,7 @@ public class DPScope extends Observable {
 	// Note: Address range is restricted to Special Function Register (SFR) on
 	// the PIC
 	public void writeMem(byte addrMSB, byte addrLSB, byte dataSFR) {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -445,7 +452,7 @@ public class DPScope extends Observable {
 
 	// CMD_WRITE_MEM (12) - Reads a memory location on the microcontroller's SFR
 	public void readMem(byte addrMSB, byte addrLSB) {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -464,7 +471,7 @@ public class DPScope extends Observable {
 	// microcontroller’s
 	// txBuf EEPROM
 	public void writeEEPROM(byte addrMSB, byte addrLSB, byte dataEEPROM) {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -483,7 +490,7 @@ public class DPScope extends Observable {
 	// CMD_READ_EEPROM (14) - Read a memory location on the microcontroller’s
 	// txBuf EEPROM
 	public void readEEPROM(byte addrMSB, byte addrLSB) {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -501,7 +508,7 @@ public class DPScope extends Observable {
 	// CMD_READ_LA (15) - Reads back the state of the logic analyzer pins (port
 	// B)
 	public void readLogicAnalyzer() {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -519,7 +526,7 @@ public class DPScope extends Observable {
 
 	// CMD_ARM_LA (16) - Sets logic analyzer acquisition parameters
 	public void armLogicAnalyzer(byte sampleRate, byte triggerCond) {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -546,7 +553,7 @@ public class DPScope extends Observable {
 	// CMD_SERIAL_INIT (18) - Initialize external trigger pin for serial txBuf
 	// output
 	public void serialInit() {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -561,7 +568,7 @@ public class DPScope extends Observable {
 
 	// CMD_SERIAL_TX (19) - Send one byte over trigger pin at 9600 baud
 	public void serialByteTx(byte serialByte) {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
@@ -576,7 +583,7 @@ public class DPScope extends Observable {
 	}
 
 	public void checkUsbSupply(int count) {
-		actionList.add(new BootAction() {
+		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				float avgVolts = 0.0f;
@@ -587,7 +594,7 @@ public class DPScope extends Observable {
 					avgVolts += getUSBVoltage();
 				}
 				setChanged();
-				channels[0] = avgVolts/count;
+				channels[0] = avgVolts / count;
 				mapOfArguments.put(Command.CMD_CHECK_USB_SUPPLY, channels);
 				notifyObservers(mapOfArguments);
 				System.out.println("Batt voltage: " + avgVolts / count);
@@ -609,25 +616,16 @@ public class DPScope extends Observable {
 	}
 
 	public void runScan_RollMode(byte ch1, byte ch2) {
-		
-		this.addObserver(new Observer() {
-			@Override
-			public void update(Observable o, Object arg) {
-				// TODO Auto-generated method stub
-				if (run_RollMode) {
-					readADC(ch1, ch2);
-				}
-				System.out.println("List size: " + actionList.size());
-//				System.out.format("%f\n", (double)(System.nanoTime() - currTime)/1_000_000_000.0);
-//				currTime = System.nanoTime();
-			}
-		});
+
 		run_RollMode = true;
+		setChannelsInUse(ch1, ch2);
+		startQueueIfStopped();
 		readADC(ch1, ch2);
 	}
 
 	public void stopScan_RollMode() {
 		run_RollMode = false;
+		actionQueue.clear();
 	}
 
 	Thread processAction = new Thread() {
@@ -635,25 +633,32 @@ public class DPScope extends Observable {
 		public void run() {
 			try {
 				while (deviceOpen) {
-					if ((isReady && (actionList.size() > 1)) || (actionList.size() == 1)) {
+					if ((isReady && (actionQueue.size() > 1)) || (actionQueue.size() == 1)) {
 						isReady = false;
 						try {
-							actionList.get(0).go();
+							actionQueue.element().go();
+							// actionQueue.remove().go();
+							 if (actionQueue.size() > 10) {
+							 actionQueue.remove();
+							 }
 						} catch (Exception e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						actionList.remove(0);
 
 					} else {
-						Thread.sleep(1);
+						Thread.sleep(10);
+//						if (actionQueue.size() > 0) {
+//							actionQueue.remove();
+//						}
 					}
 
-					if (actionList.size() == 0) {
+					if (actionQueue.size() == 0) {
 						break;
 					}
 				}
-				actionList.clear();
+				actionQueue.clear();
+				// pool.shutdown();
 				return;
 			} catch (InterruptedException v) {
 				System.out.println(v);
@@ -716,5 +721,10 @@ public class DPScope extends Observable {
 
 	public float getUSBVoltage() {
 		return usbSupplyVoltage;
+	}
+
+	private void setChannelsInUse(byte ch1, byte ch2) {
+		this.ch1 = ch1;
+		this.ch2 = ch2;
 	}
 }
