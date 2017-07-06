@@ -68,7 +68,25 @@ public class DPScope extends Observable {
 	private byte ch2;
 
 	public static enum Command {
-		CMD_IDLE, CMD_PING, CMD_REVISION, CMD_ARM, CMD_DONE, CMD_ABORT, CMD_READBACK, CMD_READADC, CMD_STATUS_LED, CMD_WRITE_MEM, CMD_READ_MEM, CMD_WRITE_EEPROM, CMD_READ_EEPROM, CMD_READ_LA, CMD_ARM_LA, CMD_INIT, CMD_SERIAL_INIT, CMD_SERIAL_TX, CMD_CHECK_USB_SUPPLY;
+		CMD_IDLE,
+		CMD_PING,
+		CMD_REVISION,
+		CMD_ARM,
+		CMD_DONE,
+		CMD_ABORT,
+		CMD_READBACK,
+		CMD_READADC,
+		CMD_STATUS_LED,
+		CMD_WRITE_MEM,
+		CMD_READ_MEM,
+		CMD_WRITE_EEPROM,
+		CMD_READ_EEPROM,
+		CMD_READ_LA,
+		CMD_ARM_LA,
+		CMD_INIT,
+		CMD_SERIAL_INIT,
+		CMD_SERIAL_TX,
+		CMD_CHECK_USB_SUPPLY;
 	}
 
 	private HashMap<Command, float[]> mapOfArguments = new LinkedHashMap<Command, float[]>();
@@ -116,9 +134,8 @@ public class DPScope extends Observable {
 						readADC(ch1, ch2);
 					}
 					System.out.println("List size: " + actionQueue.size());
-					// System.out.format("%f\n", (double)(System.nanoTime() -
-					// currTime)/1_000_000_000.0);
-					// currTime = System.nanoTime();
+					System.out.format("%f\n", (double) (System.nanoTime() - currTime) / 1_000_000_000.0);
+					currTime = System.nanoTime();
 					// callCount++;
 					// System.out.println(callCount + " times");
 				}
@@ -251,6 +268,7 @@ public class DPScope extends Observable {
 		deviceOpen = false;
 		isReady = false;
 		this.deleteObservers();
+		actionQueue.clear();
 		hidDev.close();
 	}
 
@@ -593,11 +611,12 @@ public class DPScope extends Observable {
 					sendAndWait();
 					avgVolts += getUSBVoltage();
 				}
+				actionQueue.remove();
 				setChanged();
 				channels[0] = avgVolts / count;
+				System.out.println("Batt voltage: " + avgVolts / count);
 				mapOfArguments.put(Command.CMD_CHECK_USB_SUPPLY, channels);
 				notifyObservers(mapOfArguments);
-				System.out.println("Batt voltage: " + avgVolts / count);
 				return false;
 			}
 		});
@@ -616,7 +635,6 @@ public class DPScope extends Observable {
 	}
 
 	public void runScan_RollMode(byte ch1, byte ch2) {
-
 		run_RollMode = true;
 		setChannelsInUse(ch1, ch2);
 		startQueueIfStopped();
@@ -638,19 +656,19 @@ public class DPScope extends Observable {
 						try {
 							actionQueue.element().go();
 							// actionQueue.remove().go();
-							 if (actionQueue.size() > 10) {
-							 actionQueue.remove();
-							 }
+							if (actionQueue.size() > 10) {
+								actionQueue.remove();
+							}
 						} catch (Exception e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 
 					} else {
-						Thread.sleep(10);
-//						if (actionQueue.size() > 0) {
-//							actionQueue.remove();
-//						}
+						Thread.sleep(0);
+						// if (actionQueue.size() > 0) {
+						// actionQueue.remove();
+						// }
 					}
 
 					if (actionQueue.size() == 0) {

@@ -49,7 +49,13 @@ public class DTSCTest extends ApplicationFrame {
 	private static final Random random = new Random();
 	private Timer timer;
 
+	private JButton getUSBVoltage;
+	private JButton btnPollData;
+	
 	private static DPScope myScope;
+	
+	private boolean ch1Select = true;
+	private boolean ch2Select = false;
 
 	private static float[] lastData = new float[1];
 
@@ -89,18 +95,22 @@ public class DTSCTest extends ApplicationFrame {
 					timer.stop();
 					connect.setText(CONNECT);
 					run.setText(START);
+					myScope.deleteObservers();
+					btnPollData.setText(SCAN);
+					myScope.stopScan_RollMode();
 				} else {
 					if (myScope.isDevicePresent()) {
 						myScope.connect();
 						timer.start();
 						connect.setText(DISCONNECT);
 						run.setText(STOP);
+						setupScopeObserver();
 					}
 				}
 			}
 		});
 
-		final JButton btnPollData = new JButton(SCAN);
+		btnPollData = new JButton(SCAN);
 		btnPollData.addActionListener(new ActionListener() {
 
 			@Override
@@ -122,7 +132,7 @@ public class DTSCTest extends ApplicationFrame {
 			}
 		});
 
-		final JButton getUSBVoltage = new JButton(USB_VOLTAGE);
+		getUSBVoltage = new JButton(USB_VOLTAGE);
 		getUSBVoltage.addActionListener(new ActionListener() {
 
 			@Override
@@ -151,6 +161,21 @@ public class DTSCTest extends ApplicationFrame {
 		final JComboBox<String> channelSelect = new JComboBox<String>();
 		channelSelect.addItem("Ch1");
 		channelSelect.addItem("Ch2");
+		
+		channelSelect.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				if (("Ch1".equals(channelSelect.getSelectedItem()))) {
+					ch1Select = true;
+					ch2Select = false;
+				} else {
+					ch1Select = false;
+					ch2Select = true;
+				}
+			}
+		});
 
 		this.add(new ChartPanel(chart), BorderLayout.CENTER);
 		JPanel btnPanel = new JPanel(new FlowLayout());
@@ -161,23 +186,7 @@ public class DTSCTest extends ApplicationFrame {
 		btnPanel.add(speed);
 		btnPanel.add(channelSelect);
 		this.add(btnPanel, BorderLayout.SOUTH);
-
-		myScope.addObserver(new Observer() {
-			@Override
-			public void update(Observable o, Object arg) {
-				// TODO Auto-generated method stub
-				parsedMap = (LinkedHashMap<Command, float[]>) arg;
-				if (parsedMap.containsKey(Command.CMD_READADC)) {
-					if (("Ch1".equals(channelSelect.getSelectedItem()))) {
-						lastData[0] = parsedMap.get(Command.CMD_READADC)[0];
-					} else {
-						lastData[0] = parsedMap.get(Command.CMD_READADC)[1];
-					}
-				} else if (parsedMap.containsKey(Command.CMD_CHECK_USB_SUPPLY)) {
-					getUSBVoltage.setText(String.valueOf(parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0]) + " V");
-				}
-			}
-		});
+		
 
 		timer = new Timer(1, new ActionListener() {
 			@Override
@@ -185,6 +194,26 @@ public class DTSCTest extends ApplicationFrame {
 				// lastData[0] = randomValue();
 				dataset.advanceTime();
 				dataset.appendData(lastData);
+			}
+		});
+	}
+
+	private void setupScopeObserver() {
+		// TODO Auto-generated method stub
+		myScope.addObserver(new Observer() {
+			@Override
+			public void update(Observable o, Object arg) {
+				// TODO Auto-generated method stub
+				parsedMap = (LinkedHashMap<Command, float[]>) arg;
+				if (parsedMap.containsKey(Command.CMD_READADC)) {
+					if (ch1Select) {
+						lastData[0] = parsedMap.get(Command.CMD_READADC)[0];
+					} else {
+						lastData[0] = parsedMap.get(Command.CMD_READADC)[1];
+					}
+				} else if (parsedMap.containsKey(Command.CMD_CHECK_USB_SUPPLY)) {
+					getUSBVoltage.setText(String.valueOf(parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0]) + " V");
+				}
 			}
 		});
 	}
