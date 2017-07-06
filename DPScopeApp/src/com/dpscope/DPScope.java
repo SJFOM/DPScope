@@ -130,12 +130,13 @@ public class DPScope extends Observable {
 				@Override
 				public void update(Observable o, Object arg) {
 					// TODO Auto-generated method stub
+//					actionQueue.remove();
 					if (run_RollMode) {
 						readADC(ch1, ch2);
 					}
 					System.out.println("List size: " + actionQueue.size());
-					System.out.format("%f\n", (double) (System.nanoTime() - currTime) / 1_000_000_000.0);
-					currTime = System.nanoTime();
+//					System.out.format("%f\n", (double) (System.nanoTime() - currTime) / 1_000_000_000.0);
+//					currTime = System.nanoTime();
 					// callCount++;
 					// System.out.println(callCount + " times");
 				}
@@ -601,21 +602,22 @@ public class DPScope extends Observable {
 	}
 
 	public void checkUsbSupply(int count) {
+		actionQueue.clear();
 		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
-				float avgVolts = 0.0f;
+				float avgVolts = 0.0f;	
 				for (int i = 0; i < count; i++) {
 					// readADCDirect(CH_BATTERY, CH_BATTERY);
 					buildCmdReadAdc(CH_BATTERY, CH_BATTERY);
 					sendAndWait();
 					avgVolts += getUSBVoltage();
 				}
-				actionQueue.remove();
-				setChanged();
+				actionQueue.remove();			
 				channels[0] = avgVolts / count;
 				System.out.println("Batt voltage: " + avgVolts / count);
 				mapOfArguments.put(Command.CMD_CHECK_USB_SUPPLY, channels);
+				setChanged();
 				notifyObservers(mapOfArguments);
 				return false;
 			}
@@ -654,8 +656,13 @@ public class DPScope extends Observable {
 					if ((isReady && (actionQueue.size() > 1)) || (actionQueue.size() == 1)) {
 						isReady = false;
 						try {
+//							if(actionQueue.size() > 1) {
+////							actionQueue.element().go();
+//							 actionQueue.remove().go();
+//							} else {
+//								actionQueue.element().go();
+//							}
 							actionQueue.element().go();
-							// actionQueue.remove().go();
 							if (actionQueue.size() > 10) {
 								actionQueue.remove();
 							}
@@ -665,10 +672,10 @@ public class DPScope extends Observable {
 						}
 
 					} else {
-						Thread.sleep(0);
-						// if (actionQueue.size() > 0) {
-						// actionQueue.remove();
-						// }
+						Thread.sleep(10);
+//						 if (actionQueue.size() > 0) {
+//						 actionQueue.remove();
+//						 }
 					}
 
 					if (actionQueue.size() == 0) {
