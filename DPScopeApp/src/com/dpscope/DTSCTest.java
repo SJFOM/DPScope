@@ -121,6 +121,10 @@ public class DTSCTest extends ApplicationFrame {
 						timer.start();
 						btnPollData.setText(STOP_SCAN);
 						run.setText(STOP);
+						if(myScope.countObservers() == 0) {
+							System.out.println("Empty observer list - run scan");
+							setupScopeObserver();
+						}
 						myScope.runScan_RollMode(DPScope.CH1_1, DPScope.CH2_1);
 					}
 				} else {
@@ -137,7 +141,11 @@ public class DTSCTest extends ApplicationFrame {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (myScope.isDevicePresent()) {
+				if (myScope.isDeviceConnected()) {
+					if(myScope.countObservers() == 0) {
+						System.out.println("Empty observer list - get usb voltage");
+						setupScopeObserver();
+					}
 					myScope.checkUsbSupply(10);
 				}
 			}

@@ -672,7 +672,7 @@ public class DPScope extends Observable {
 						}
 
 					} else {
-						Thread.sleep(10);
+						Thread.sleep(1);
 //						 if (actionQueue.size() > 0) {
 //						 actionQueue.remove();
 //						 }
@@ -751,5 +751,13 @@ public class DPScope extends Observable {
 	private void setChannelsInUse(byte ch1, byte ch2) {
 		this.ch1 = ch1;
 		this.ch2 = ch2;
+	}
+	
+	protected boolean isDeviceConnected() {
+		if(devInfo != null) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 }
