@@ -122,6 +122,7 @@ public class DTSCTest extends ApplicationFrame {
 						btnPollData.setText(STOP_SCAN);
 						run.setText(STOP);
 						if(myScope.countObservers() == 0) {
+							// probably never called...
 							System.out.println("Empty observer list - run scan");
 							setupScopeObserver();
 						}
@@ -143,6 +144,7 @@ public class DTSCTest extends ApplicationFrame {
 			public void actionPerformed(ActionEvent e) {
 				if (myScope.isDeviceConnected()) {
 					if(myScope.countObservers() == 0) {
+						// probably never called...
 						System.out.println("Empty observer list - get usb voltage");
 						setupScopeObserver();
 					}
@@ -220,7 +222,7 @@ public class DTSCTest extends ApplicationFrame {
 						lastData[0] = parsedMap.get(Command.CMD_READADC)[1];
 					}
 				} else if (parsedMap.containsKey(Command.CMD_CHECK_USB_SUPPLY)) {
-					getUSBVoltage.setText(String.valueOf(parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0]) + " V");
+					getUSBVoltage.setText(String.valueOf(String.format("%.3f", parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0])) + " V");
 				}
 			}
 		});
@@ -273,22 +275,6 @@ public class DTSCTest extends ApplicationFrame {
 			myScope.queryIfDone();
 			return lastData[0];
 		}
-	}
-
-	public float runScan_RollMode(int channel, boolean battRead) {
-		float[] newData = new float[1];
-		if (channel == 1) {
-			newData[0] = myScope.getSignalCh1();
-		} else {
-			newData[0] = myScope.getSignalCh2();
-		}
-		// System.out.println("newData: " + newData[0]);
-		if (battRead) {
-			myScope.readADC(DPScope.CH_BATTERY, DPScope.CH_BATTERY);
-		} else {
-			myScope.readADC(DPScope.CH1_1, DPScope.CH2_1);
-		}
-		return newData[0];
 	}
 
 	public static void main(final String[] args) {

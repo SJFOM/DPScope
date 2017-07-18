@@ -134,7 +134,7 @@ public class DPScope extends Observable {
 					if (run_RollMode) {
 						readADC(ch1, ch2);
 					}
-					System.out.println("List size: " + actionQueue.size());
+//					System.out.println("List size: " + actionQueue.size());
 //					System.out.format("%f\n", (double) (System.nanoTime() - currTime) / 1_000_000_000.0);
 //					currTime = System.nanoTime();
 					// callCount++;
@@ -181,6 +181,10 @@ public class DPScope extends Observable {
 										(rxBuf[0] > 0) ? ("is now") : "not");
 								isDone = true;
 								// isReady = true;
+								mapOfArguments.put(Command.CMD_DONE, channels);
+								setChanged();
+								notifyObservers(mapOfArguments);
+								isReady = true;
 							}
 							break;
 						case CMD_ABORT:
@@ -615,7 +619,7 @@ public class DPScope extends Observable {
 				}
 				actionQueue.remove();			
 				channels[0] = avgVolts / count;
-				System.out.println("Batt voltage: " + avgVolts / count);
+				System.out.printf("Batt voltage: %.3f\n", avgVolts / count);
 				mapOfArguments.put(Command.CMD_CHECK_USB_SUPPLY, channels);
 				setChanged();
 				notifyObservers(mapOfArguments);
@@ -672,7 +676,7 @@ public class DPScope extends Observable {
 						}
 
 					} else {
-						Thread.sleep(1);
+						Thread.sleep(5);
 //						 if (actionQueue.size() > 0) {
 //						 actionQueue.remove();
 //						 }
