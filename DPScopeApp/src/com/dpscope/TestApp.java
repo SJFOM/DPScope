@@ -1,33 +1,51 @@
 package com.dpscope;
 
+import java.util.LinkedHashMap;
+import java.util.Observable;
+import java.util.Observer;
+
+import com.dpscope.DPScope.Command;
+
 public class TestApp {
+
+	private static LinkedHashMap<Command, float[]> parsedMap;
+
+	private static float[] lastData = new float[1];
+	private static float[] scopeBuffer = new float[448];
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		DPScope myScope = new DPScope();
 		if (myScope.isDevicePresent()) {
 			myScope.connect();
-			// myScope.checkUsbSupply(5);
-			long currTime = System.nanoTime();
-			System.out.println("Starting");
-			int i = 0;
-			currTime = System.nanoTime();
-			for (; i < 10; i++) {
-				myScope.readADC(DPScope.CH1_1, DPScope.CH2_1);				
-				while (!myScope.isReady);
-//				System.out.println(myScope.isReady);
-				myScope.getSignalCh1();
-				myScope.getSignalCh2();
-//				System.out.println("Ch1: " + myScope.getSignalCh1());
-//				System.out.println("Ch2: " + myScope.getSignalCh2());
-//				System.out.println(System.nanoTime() - currTime);
-			}
+			myScope.addObserver(new Observer() {
+				@Override
+				public void update(Observable o, Object arg) {
+					// TODO Auto-generated method stub
+					parsedMap = (LinkedHashMap<Command, float[]>) arg;
+					if (parsedMap.containsKey(Command.CMD_READADC)) {
+						lastData[0] = parsedMap.get(Command.CMD_READADC)[0];
+					} else if (parsedMap.containsKey(Command.CMD_CHECK_USB_SUPPLY)) {
+						System.out.println(parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0] + "Volts");
+					} else if (parsedMap.containsKey(Command.CMD_READBACK)) {
+						scopeBuffer = parsedMap.get(Command.CMD_READBACK);
+						for (int i = 1; i < scopeBuffer.length; i+=2) {
+							System.out.println(i + " - " + scopeBuffer[i]);
+						}
+					}
+				}
+			});
 
-			double elapsedTimeInSeconds = (double)((System.nanoTime() - currTime)/1_000_000_000.0);
-			System.out.format("Time elapsed: %f seconds\n", elapsedTimeInSeconds);
-			System.out.format("Sampling rate: %f Hz\n", i/elapsedTimeInSeconds);
-			System.out.println("Closing up");
-			myScope.disconnect();
+			myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
+			while (true) {
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			// myScope.disconnect();
 		} else {
 			System.out.println("No device present");
 		}

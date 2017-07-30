@@ -59,6 +59,9 @@ public class DPScope extends Observable {
 
 	private float[] channels = new float[2];
 	private boolean run_RollMode = false;
+	
+	private static float[] scopeBuffer = new float[448];
+	private static int currBlock = 0;
 
 	public long currTime = 0;
 
@@ -130,13 +133,14 @@ public class DPScope extends Observable {
 				@Override
 				public void update(Observable o, Object arg) {
 					// TODO Auto-generated method stub
-//					actionQueue.remove();
+					// actionQueue.remove();
 					if (run_RollMode) {
 						readADC(ch1, ch2);
 					}
-//					System.out.println("List size: " + actionQueue.size());
-//					System.out.format("%f\n", (double) (System.nanoTime() - currTime) / 1_000_000_000.0);
-//					currTime = System.nanoTime();
+					// System.out.println("List size: " + actionQueue.size());
+					// System.out.format("%f\n", (double) (System.nanoTime() - currTime) /
+					// 1_000_000_000.0);
+					// currTime = System.nanoTime();
 					// callCount++;
 					// System.out.println(callCount + " times");
 				}
@@ -174,16 +178,16 @@ public class DPScope extends Observable {
 							break;
 						case CMD_ARM:
 							System.out.println("Scope Armed...");
-							break;
+//							break;
 						case CMD_DONE:
 							if (rxBuf[0] > 0) {
 								System.out.printf("Current acquisition %s acquired\n",
 										(rxBuf[0] > 0) ? ("is now") : "not");
+								
+								for (int i = 0; i < 7; i++) {
+									readBack(i);
+								}
 								isDone = true;
-								// isReady = true;
-								mapOfArguments.put(Command.CMD_DONE, channels);
-								setChanged();
-								notifyObservers(mapOfArguments);
 								isReady = true;
 							}
 							break;
@@ -192,20 +196,26 @@ public class DPScope extends Observable {
 							// isReady = true;
 							break;
 						case CMD_READBACK:
-							System.out.print("Readback rxBuf - to be implemented\n");
-							isDone = false;
-							int ch1 = 0, ch2 = 0;
-							for (int idx = 0; idx < 64; idx += 2) {
+							System.out.print("Readback rxBuf - block " + currBlock + "\n");
+//							int ch1 = 0, ch2 = 0;
+							for (int idx = 0; idx < 64; idx++) {
 								// System.out.print(rxBuf[idx] - 127 + " ");
 								// if(rxBuf[ids
-								ch1 += (int) ((rxBuf[idx] & 0xFF) << 2) - 127 * 0;
-								ch2 += (int) ((rxBuf[idx + 1] & 0xFF) << 2) - 127 * 0;
+//								ch1 += (int) ((rxBuf[idx] & 0xFF) << 2) - 127 * 0;
+//								ch2 += (int) ((rxBuf[idx + 1] & 0xFF) << 2) - 127 * 0;
+								scopeBuffer[idx + ((int)txBuf[1]) * 64] = (int) ((rxBuf[idx] & 0xFF) << 2);
 							}
-							signalCh1 = ch1 / 32;
-							signalCh2 = ch2 / 32;
-							System.out.println("Channel 1 -> " + signalCh1);
-							System.out.println("Channel 2 -> " + signalCh2);
-							// isReady = true;
+//							signalCh1 = ch1 / 32;
+//							signalCh2 = ch2 / 32;
+//							System.out.println("Channel 1 -> " + signalCh1);
+//							System.out.println("Channel 2 -> " + signalCh2);
+							if(currBlock == 6) {
+								mapOfArguments.put(Command.CMD_READBACK, scopeBuffer);
+								setChanged();
+								notifyObservers(mapOfArguments);
+							}
+							isReady = true;
+//							isDone = false;
 							break;
 						case CMD_READADC:
 							signalCh1 = ((int) (((rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF)) & 0xFF) - 511);
@@ -352,6 +362,7 @@ public class DPScope extends Observable {
 				return false;
 			}
 		});
+		startQueueIfStopped();
 	}
 
 	// CMD_DONE (6) - Query whether scope has already finished the acquisition
@@ -397,6 +408,7 @@ public class DPScope extends Observable {
 				isDone = false;
 				length = 2;
 				currCmd = Command.CMD_READBACK;
+				currBlock = block;
 				sendAndWait();
 				return false;
 			}
@@ -610,14 +622,14 @@ public class DPScope extends Observable {
 		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
-				float avgVolts = 0.0f;	
+				float avgVolts = 0.0f;
 				for (int i = 0; i < count; i++) {
 					// readADCDirect(CH_BATTERY, CH_BATTERY);
 					buildCmdReadAdc(CH_BATTERY, CH_BATTERY);
 					sendAndWait();
 					avgVolts += getUSBVoltage();
 				}
-				actionQueue.remove();			
+				actionQueue.remove();
 				channels[0] = avgVolts / count;
 				System.out.printf("Batt voltage: %.3f\n", avgVolts / count);
 				mapOfArguments.put(Command.CMD_CHECK_USB_SUPPLY, channels);
@@ -660,16 +672,13 @@ public class DPScope extends Observable {
 					if ((isReady && (actionQueue.size() > 1)) || (actionQueue.size() == 1)) {
 						isReady = false;
 						try {
-//							if(actionQueue.size() > 1) {
-////							actionQueue.element().go();
-//							 actionQueue.remove().go();
-//							} else {
-//								actionQueue.element().go();
+//							actionQueue.element().go();
+//							if (actionQueue.size() > 10) {
+//								actionQueue.remove();
 //							}
 							actionQueue.element().go();
-							if (actionQueue.size() > 10) {
-								actionQueue.remove();
-							}
+							actionQueue.remove();
+							
 						} catch (Exception e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -677,9 +686,9 @@ public class DPScope extends Observable {
 
 					} else {
 						Thread.sleep(5);
-//						 if (actionQueue.size() > 0) {
-//						 actionQueue.remove();
-//						 }
+						// if (actionQueue.size() > 0) {
+						// actionQueue.remove();
+						// }
 					}
 
 					if (actionQueue.size() == 0) {
@@ -756,9 +765,9 @@ public class DPScope extends Observable {
 		this.ch1 = ch1;
 		this.ch2 = ch2;
 	}
-	
+
 	protected boolean isDeviceConnected() {
-		if(devInfo != null) {
+		if (devInfo != null) {
 			return true;
 		} else {
 			return false;
