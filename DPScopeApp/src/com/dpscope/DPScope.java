@@ -24,9 +24,9 @@ public class DPScope extends Observable {
 	private final static short VID = (short) 0x04D8;
 	private final static short PID = (short) 0xF891;
 
-	protected final static byte CH1_1 = (byte) 5;
+	protected final static byte CH1_1  = (byte) 5;
 	protected final static byte CH1_10 = (byte) 6;
-	protected final static byte CH2_1 = (byte) 8;
+	protected final static byte CH2_1  = (byte) 8;
 	protected final static byte CH2_10 = (byte) 9;
 	protected final static byte CH_BATTERY = (byte) 15;
 
