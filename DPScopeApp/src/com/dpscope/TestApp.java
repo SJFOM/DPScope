@@ -28,24 +28,23 @@ public class TestApp {
 					} else if (parsedMap.containsKey(Command.CMD_CHECK_USB_SUPPLY)) {
 						System.out.println(parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0] + "Volts");
 					} else if (parsedMap.containsKey(Command.CMD_READBACK)) {
-						scopeBuffer = parsedMap.get(Command.CMD_READBACK);
-						for (int i = 1; i < scopeBuffer.length; i+=2) {
+						for (int i = 1; i < scopeBuffer.length; i += 2) {
 							System.out.println(i + " - " + scopeBuffer[i]);
 						}
 					}
 				}
 			});
 
+			myScope.checkUsbSupply(10);
 			myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
-			while (true) {
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+			try {
+				Thread.sleep(4000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-			// myScope.disconnect();
+
+			myScope.disconnect();
 		} else {
 			System.out.println("No device present");
 		}

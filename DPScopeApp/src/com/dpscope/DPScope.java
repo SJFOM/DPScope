@@ -55,7 +55,7 @@ public class DPScope extends Observable {
 
 	public List<BootAction> actionList = new ArrayList<BootAction>();
 	public Queue<BootAction> actionQueue = new LinkedList<BootAction>();
-	private final ExecutorService pool;
+	private ExecutorService pool;
 
 	private float[] channels = new float[2];
 	private boolean run_RollMode = false;
@@ -99,7 +99,7 @@ public class DPScope extends Observable {
 		currCmd = Command.CMD_IDLE;
 		signalCh1 = 0;
 		signalCh2 = 0;
-		pool = Executors.newSingleThreadExecutor();
+//		pool = Executors.newSingleThreadExecutor();
 	}
 
 	public boolean isDevicePresent() {
@@ -128,6 +128,7 @@ public class DPScope extends Observable {
 		if (devInfo != null) {
 			deviceOpen = true;
 			isReady = true;
+			pool = Executors.newSingleThreadExecutor();
 			this.addObserver(new Observer() {
 
 				@Override
@@ -284,6 +285,7 @@ public class DPScope extends Observable {
 		isReady = false;
 		this.deleteObservers();
 		actionQueue.clear();
+		pool.shutdown();
 		hidDev.close();
 	}
 
@@ -629,9 +631,9 @@ public class DPScope extends Observable {
 					sendAndWait();
 					avgVolts += getUSBVoltage();
 				}
-				actionQueue.remove();
+//				actionQueue.remove();
 				channels[0] = avgVolts / count;
-				System.out.printf("Batt voltage: %.3f\n", avgVolts / count);
+				System.out.printf("USB voltage: %.3f\n", avgVolts / count);
 				mapOfArguments.put(Command.CMD_CHECK_USB_SUPPLY, channels);
 				setChanged();
 				notifyObservers(mapOfArguments);
@@ -676,8 +678,9 @@ public class DPScope extends Observable {
 //							if (actionQueue.size() > 10) {
 //								actionQueue.remove();
 //							}
-							actionQueue.element().go();
-							actionQueue.remove();
+//							actionQueue.element().go();
+							actionQueue.poll().go();
+//							actionQueue.remove();
 							
 						} catch (Exception e) {
 							// TODO Auto-generated catch block
