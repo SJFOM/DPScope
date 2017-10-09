@@ -129,23 +129,23 @@ public class DPScope extends Observable {
 			deviceOpen = true;
 			isReady = true;
 			pool = Executors.newSingleThreadExecutor();
-			this.addObserver(new Observer() {
-
-				@Override
-				public void update(Observable o, Object arg) {
-					// TODO Auto-generated method stub
-					// actionQueue.remove();
-					if (run_RollMode) {
-						readADC(ch1, ch2);
-					}
-					// System.out.println("List size: " + actionQueue.size());
-					// System.out.format("%f\n", (double) (System.nanoTime() - currTime) /
-					// 1_000_000_000.0);
-					// currTime = System.nanoTime();
-					// callCount++;
-					// System.out.println(callCount + " times");
-				}
-			});
+//			this.addObserver(new Observer() {
+//
+//				@Override
+//				public void update(Observable o, Object arg) {
+//					// TODO Auto-generated method stub
+//					// actionQueue.remove();
+//					if (run_RollMode) {
+//						readADC(ch1, ch2);
+//					}
+//					// System.out.println("List size: " + actionQueue.size());
+//					// System.out.format("%f\n", (double) (System.nanoTime() - currTime) /
+//					// 1_000_000_000.0);
+//					// currTime = System.nanoTime();
+//					// callCount++;
+//					// System.out.println(callCount + " times");
+//				}
+//			});
 
 			try {
 				hidDev = PureJavaHidApi.openDevice(devInfo);
@@ -197,7 +197,8 @@ public class DPScope extends Observable {
 							// isReady = true;
 							break;
 						case CMD_READBACK:
-							System.out.print("Readback rxBuf - block " + currBlock + "\n");
+							// read back each block of 64 bytes
+//							System.out.print("Readback rxBuf - block " + currBlock + "\n");
 //							int ch1 = 0, ch2 = 0;
 							for (int idx = 0; idx < 64; idx++) {
 								// System.out.print(rxBuf[idx] - 127 + " ");
@@ -210,7 +211,10 @@ public class DPScope extends Observable {
 //							signalCh2 = ch2 / 32;
 //							System.out.println("Channel 1 -> " + signalCh1);
 //							System.out.println("Channel 2 -> " + signalCh2);
+							
 							if(currBlock == 6) {
+								// all blocks read from
+								System.out.println("CMD_READBACK - all blocks read");
 								mapOfArguments.put(Command.CMD_READBACK, scopeBuffer);
 								setChanged();
 								notifyObservers(mapOfArguments);
@@ -262,6 +266,13 @@ public class DPScope extends Observable {
 						case CMD_CHECK_USB_SUPPLY:
 							usbSupplyVoltage = (float) 4.096 * 1023
 									/ ((int) (rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF));
+							channels[0] = usbSupplyVoltage;
+//							channels[0] = avgVolts / count;
+//							System.out.printf("USB voltage: %.3f\n", avgVolts / count);
+							mapOfArguments.put(Command.CMD_CHECK_USB_SUPPLY, channels);
+							setChanged();
+							notifyObservers(mapOfArguments);
+							isReady = true;
 							break;
 						default:
 							break;
@@ -328,9 +339,9 @@ public class DPScope extends Observable {
 				txBuf[1] = ch1; // channel1
 				txBuf[2] = ch2; // channel2
 				txBuf[3] = ADC_ACQ;
-				txBuf[4] = 0x00; // timer MSB
-				txBuf[5] = 0x10; // timer LSB
-				txBuf[6] = 0x01; // prescaler bypass (0 = use prescaler, 1 =
+				txBuf[4] = (byte) 255; // timer MSB
+				txBuf[5] = (byte) 0; // timer LSB
+				txBuf[6] = (byte) 1; // prescaler bypass (0 = use prescaler, 1 =
 									// bypass
 									// prescaler)
 				txBuf[7] = 0x00; // prescaler selection as power of 2 (7=div256,
@@ -347,15 +358,15 @@ public class DPScope extends Observable {
 				txBuf[15] = 0x10; // trigger level LSB (only applicable if
 									// triggering on
 				// CH1, not for ext. trigger)
-				txBuf[16] = 0x00; // sampling mode: (0 = real time, 1 =
+				txBuf[16] = (byte) 1; // sampling mode: (0 = real time, 1 =
 									// equivalent time)
-				txBuf[17] = 0x10; // equivalent time sample interval in 0.5 usec
+				txBuf[17] = (byte) 1; // equivalent time sample interval in 0.5 usec
 				// increments
-				txBuf[18] = (byte) (txBuf[17] >> 2); // equivalent time trigger
+				txBuf[18] = (byte) (txBuf[17] >> 1); // equivalent time trigger
 				// stability check period (half
 				// of byte 17 value is a good
 				// choice)
-				txBuf[19] = 0x01; // trigger channel to use (1 = CH1 gain 1, 2 =
+				txBuf[19] = (byte) 1; // trigger channel to use (1 = CH1 gain 1, 2 =
 									// CH1
 				// gain 10, 3 = ext. trigger)
 				length = 20;
@@ -411,7 +422,8 @@ public class DPScope extends Observable {
 				length = 2;
 				currCmd = Command.CMD_READBACK;
 				currBlock = block;
-				sendAndWait();
+//				sendAndWait();
+				sendNoWait();
 				return false;
 			}
 		});
@@ -430,7 +442,7 @@ public class DPScope extends Observable {
 				return false;
 			}
 		});
-		// startQueueIfStopped();
+		startQueueIfStopped();
 	}
 
 	public void readADCDirect(byte ch1, byte ch2) {
@@ -620,7 +632,7 @@ public class DPScope extends Observable {
 	}
 
 	public void checkUsbSupply(int count) {
-		actionQueue.clear();
+//		actionQueue.clear();
 		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
@@ -629,9 +641,11 @@ public class DPScope extends Observable {
 					// readADCDirect(CH_BATTERY, CH_BATTERY);
 					buildCmdReadAdc(CH_BATTERY, CH_BATTERY);
 					sendAndWait();
+					sendNoWait();
 					avgVolts += getUSBVoltage();
 				}
-//				actionQueue.remove();
+				actionQueue.remove();
+				channels[0] = 0;
 				channels[0] = avgVolts / count;
 				System.out.printf("USB voltage: %.3f\n", avgVolts / count);
 				mapOfArguments.put(Command.CMD_CHECK_USB_SUPPLY, channels);
@@ -670,8 +684,11 @@ public class DPScope extends Observable {
 
 		public void run() {
 			try {
+				BootAction bootItem = null;
+				isReady = true;
 				while (deviceOpen) {
-					if ((isReady && (actionQueue.size() > 1)) || (actionQueue.size() == 1)) {
+					if (isReady && (actionQueue.size() > 0)) {
+//						if ((isReady && (actionQueue.size() >= 1)) || (actionQueue.size() == 1)) {
 						isReady = false;
 						try {
 //							actionQueue.element().go();
@@ -679,25 +696,34 @@ public class DPScope extends Observable {
 //								actionQueue.remove();
 //							}
 //							actionQueue.element().go();
-							actionQueue.poll().go();
-//							actionQueue.remove();
+							bootItem = actionQueue.poll();
+							if(bootItem != null) {
+								bootItem.go();
+							} else {
+								System.out.println("Error - Empty actionQueue!");
+								break;
+							}
 							
 						} catch (Exception e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 
-					} else {
-						Thread.sleep(5);
+					} 
+					else {
+						// Shouldn't enter here if pending tasks
+						// are updated faster than this timeout..
+						Thread.sleep(0);
 						// if (actionQueue.size() > 0) {
 						// actionQueue.remove();
 						// }
 					}
 
-					if (actionQueue.size() == 0) {
-						break;
-					}
+//					if (actionQueue.size() == 0) {
+//						return;
+//					}
 				}
+				// if scope not/no longer connected
 				actionQueue.clear();
 				// pool.shutdown();
 				return;
@@ -709,17 +735,14 @@ public class DPScope extends Observable {
 
 	private void waitForResponse() {
 		int loopCount = 0;
-		int interval = 20;
-		int loopCountTotal = (int) Math.ceil(((double) 100) / ((double) interval));
+		int interval = 5;
+		final int loopCountTotal = (int) Math.ceil(((double) 100) / ((double) interval));
+		while (true) {
+//			if (isReady) {
+//				break;
+//			}
 
-		boolean flag = true;
-		while (flag) {
-			if (isReady) {
-				break;
-			}
-
-			loopCount += 1;
-			if (loopCount >= loopCountTotal) {
+			if (loopCount++ >= loopCountTotal) {
 				break;
 			}
 
