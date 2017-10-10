@@ -12,6 +12,8 @@ public class TestApp {
 
 	private static float[] lastData = new float[1];
 	private static float[] scopeBuffer = new float[448];
+	
+	private static boolean isDone = false;
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
@@ -32,18 +34,30 @@ public class TestApp {
 //							System.out.println(i + " - " + scopeBuffer[i]);
 //						}
 						System.out.println("CMD_READBACK - all blocks read");
+					} else if (parsedMap.containsKey(Command.CMD_READBACK)){
+						isDone = true;
 					}
 				}
 			});
 
+			try {
 //			for (int i = 0; i < 1; i++) {
 //				myScope.checkUsbSupply();				
 //			}
 //			myScope.checkUsbSupply();
-			myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
+			myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);						
 			
 			
-			try {
+			// not sure if isDone is returned every time or not..
+			while(!isDone);
+			isDone = false;
+			Thread.sleep(50);
+			
+			for (int i = 0; i < 7; i++) {
+				myScope.readBack(i);
+			}
+			
+			
 				Thread.sleep(17);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block

@@ -185,10 +185,13 @@ public class DPScope extends Observable {
 								System.out.printf("Current acquisition %s acquired\n",
 										(rxBuf[0] > 0) ? ("is now") : "not");
 								
-								for (int i = 0; i < 7; i++) {
-									readBack(i);
-								}
+//								for (int i = 0; i < 7; i++) {
+//									readBack(i);
+//								}
 								isDone = true;
+								mapOfArguments.put(Command.CMD_DONE, null);
+								setChanged();
+								notifyObservers(mapOfArguments);
 								isReady = true;
 							}
 							break;
