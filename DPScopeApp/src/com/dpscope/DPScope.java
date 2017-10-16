@@ -30,6 +30,19 @@ public class DPScope extends Observable {
 	protected final static byte CH2_10 = (byte) 9;
 	protected final static byte CH_BATTERY = (byte) 15;
 
+	/*
+	 *  ADC acquisition parameters - from MainModule.bas
+	 *
+	 * 5 (FOSC/16) is the fastest that seems to work (outside spec!); maybe use 2 (FOSC/32) instead (still a bit outside spec)
+	 * Public Const ADCS As Long = 2 
+	 *
+	 * minimal valid values: >= 3 for FOSC/64; >=5 (12 Tad) for FOSC/32; 7 (20 Tad) for FOSC/16
+	 * Fosc=48 MHz, ADCS 6 = FOSC/64, ACQT 3 =  6 Tad --> Tacq_min = 64 * (11 +  6 + 2) / 48 = 25.33 us
+ 	 * Fosc=48 MHz, ADCS 2 = FOSC/32, ACQT 5 = 12 Tad --> Tacq_min = 32 * (11 + 12 + 2) / 48 = 16.67 us
+	 * Fosc=48 MHz, ADCS 5 = FOSC/16, ACQT 7 = 20 Tad --> Tacq_min = 16 * (11 + 20 + 2) / 48 = 11.00 us
+ 	 * Public Const ACQT As Long = 5 
+  	 */
+	
 	private final static int ADCS = 2;
 	private final static int ACQT = 5;
 
@@ -333,6 +346,17 @@ public class DPScope extends Observable {
 	}
 
 	// CMD_ARM (5) - Sets all acquisition parameters and arms scope
+	/*
+    ' ARM parameters (watch out, VB array is 1-based, MikroC array is 0-based)
+    '  1: command
+    '  2: first channel to acquire
+    '  3: second channel to acquire
+    '  4: acquisition parameters (sample clock divider, acquisition time)
+    '  5: timer 0 preload high
+    '  6: timer 0 preload low
+    '  7: timer 0 prescaler bypass (0 = use prescaler, 1 = bypass prescaler)
+    '  8: timer 0 prescaler as power of 2 (7=div256, 0=div2): divide = 2^(PS+1)
+	*/
 	public void armScope(byte ch1, byte ch2) {
 		actionQueue.add(new BootAction() {
 			@Override
@@ -342,8 +366,8 @@ public class DPScope extends Observable {
 				txBuf[1] = ch1; // channel1
 				txBuf[2] = ch2; // channel2
 				txBuf[3] = ADC_ACQ;
-				txBuf[4] = (byte) 255; // timer MSB
-				txBuf[5] = (byte) 0; // timer LSB
+				txBuf[4] = (byte) 255; // timer MSB - TimerPreloadHigh
+				txBuf[5] = (byte) 10; // timer LSB - TimerPreloadLow
 				txBuf[6] = (byte) 1; // prescaler bypass (0 = use prescaler, 1 =
 									// bypass
 									// prescaler)

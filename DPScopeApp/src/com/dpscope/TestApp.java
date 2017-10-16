@@ -34,7 +34,7 @@ public class TestApp {
 //							System.out.println(i + " - " + scopeBuffer[i]);
 //						}
 						System.out.println("CMD_READBACK - all blocks read");
-					} else if (parsedMap.containsKey(Command.CMD_READBACK)){
+					} else if (parsedMap.containsKey(Command.CMD_DONE)){
 						isDone = true;
 					}
 				}
@@ -47,24 +47,29 @@ public class TestApp {
 //			myScope.checkUsbSupply();
 			myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);						
 			
+			long timeOut = 15;
+			int timeOutText = (int) ((int) 1000*448/timeOut);
+			System.out.println(timeOutText + " samples/sec");
 			
 			// not sure if isDone is returned every time or not..
 			while(!isDone);
 			isDone = false;
-			Thread.sleep(50);
+//			Thread.sleep(50);
+			System.out.println("Ready for read");
 			
 			for (int i = 0; i < 7; i++) {
 				myScope.readBack(i);
 			}
 			
 			
-				Thread.sleep(17);
+				Thread.sleep(timeOut);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 
 			myScope.disconnect();
+			
 		} else {
 			System.out.println("No device present");
 		}
