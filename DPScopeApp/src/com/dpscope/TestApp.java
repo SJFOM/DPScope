@@ -14,6 +14,9 @@ public class TestApp {
 	private static float[] scopeBuffer = new float[448];
 	
 	private static boolean isDone = false;
+	
+	private static long timeCapture = 0l;
+	private static long timeElapsed = 0l;
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
@@ -33,6 +36,7 @@ public class TestApp {
 //						for (int i = 1; i < scopeBuffer.length; i += 2) {
 //							System.out.println(i + " - " + scopeBuffer[i]);
 //						}
+						timeElapsed = System.nanoTime() - timeCapture;
 						System.out.println("CMD_READBACK - all blocks read");
 					} else if (parsedMap.containsKey(Command.CMD_DONE)){
 						isDone = true;
@@ -45,31 +49,31 @@ public class TestApp {
 //				myScope.checkUsbSupply();				
 //			}
 //			myScope.checkUsbSupply();
-			myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);						
+			myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
 			
-			long timeOut = 15;
-			int timeOutText = (int) ((int) 1000*448/timeOut);
-			System.out.println(timeOutText + " samples/sec");
-			
-			// not sure if isDone is returned every time or not..
-			while(!isDone);
+			// must query scope if its ready for readback
+			myScope.queryIfDone();
+			while(!isDone) {
+				Thread.sleep(250); // gives enough time to re-check and for readBack
+				System.out.println("not ready - wait...");
+			}
 			isDone = false;
-//			Thread.sleep(50);
-			System.out.println("Ready for read");
 			
+			System.out.println("Ready for read!");
+			
+			timeCapture = System.nanoTime();
 			for (int i = 0; i < 7; i++) {
 				myScope.readBack(i);
-			}
+			}			
 			
-			
-				Thread.sleep(timeOut);
+				Thread.sleep(50);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 
 			myScope.disconnect();
-			
+			System.out.println("Time elapsed: " + (timeElapsed / 1e9) + " seconds");
 		} else {
 			System.out.println("No device present");
 		}

@@ -192,7 +192,8 @@ public class DPScope extends Observable {
 							break;
 						case CMD_ARM:
 							System.out.println("Scope Armed...");
-//							break;
+							isReady = true;
+							break;
 						case CMD_DONE:
 							if (rxBuf[0] > 0) {
 								System.out.printf("Current acquisition %s acquired\n",
@@ -205,8 +206,10 @@ public class DPScope extends Observable {
 								mapOfArguments.put(Command.CMD_DONE, null);
 								setChanged();
 								notifyObservers(mapOfArguments);
-								isReady = true;
+							} else {
+								queryIfDone();
 							}
+							isReady = true;
 							break;
 						case CMD_ABORT:
 							System.out.print("Scope disarmed");
@@ -230,7 +233,7 @@ public class DPScope extends Observable {
 							
 							if(currBlock == 6) {
 								// all blocks read from
-								System.out.println("CMD_READBACK - all blocks read");
+//								System.out.println("CMD_READBACK - all blocks read");
 								mapOfArguments.put(Command.CMD_READBACK, scopeBuffer);
 								setChanged();
 								notifyObservers(mapOfArguments);
@@ -368,26 +371,27 @@ public class DPScope extends Observable {
 				txBuf[3] = ADC_ACQ;
 				txBuf[4] = (byte) 255; // timer MSB - TimerPreloadHigh
 				txBuf[5] = (byte) 10; // timer LSB - TimerPreloadLow
-				txBuf[6] = (byte) 1; // prescaler bypass (0 = use prescaler, 1 =
-									// bypass
-									// prescaler)
-				txBuf[7] = 0x00; // prescaler selection as power of 2 (7=div256,
+				txBuf[6] = (byte) 1; // prescaler bypass 
+									// 0 = use prescaler
+									// 1 = bypass prescaler
+				txBuf[7] = 0x00;    // prescaler selection as power of 2 (7=div256,
 									// 0=div2)
 				txBuf[8] = (byte) 2; // sample shift first channel
 				txBuf[9] = (byte) 2; // sample shift second channel
 				txBuf[10] = (byte) 0; // sample subtract first channel
 				txBuf[11] = (byte) 0; // sample subtract second channel
-				txBuf[12] = 0x00; // trigger source (0 = auto, 1 = triggered)
-				txBuf[13] = 0x00; // trigger polarity (0 = falling edge, 1 =
-									// rising
-									// edge)
+				txBuf[12] = 0x00;    // trigger source (0 = auto, 1 = triggered)
+				txBuf[13] = 0x00;    // trigger polarity 
+									// 0 = falling edge
+									// 1 = rising edge
 				txBuf[14] = 0x00; // trigger level MSB (currently not used)
-				txBuf[15] = 0x10; // trigger level LSB (only applicable if
+				txBuf[15] = 0x00; // trigger level LSB (only applicable if
 									// triggering on
 				// CH1, not for ext. trigger)
-				txBuf[16] = (byte) 1; // sampling mode: (0 = real time, 1 =
-									// equivalent time)
-				txBuf[17] = (byte) 1; // equivalent time sample interval in 0.5 usec
+				txBuf[16] = (byte) 0; // sampling mode: 
+									 // 0 = real time, 
+									 // 1 = equivalent time)
+				txBuf[17] = (byte) 2; // equivalent time sample interval in 0.5 usec
 				// increments
 				txBuf[18] = (byte) (txBuf[17] >> 1); // equivalent time trigger
 				// stability check period (half
