@@ -22,27 +22,28 @@ public class DPScope extends Observable {
 	private final static short VID = (short) 0x04D8;
 	private final static short PID = (short) 0xF891;
 
-	protected final static byte CH1_1  = (byte) 5;
+	protected final static byte CH1_1 = (byte) 5;
 	protected final static byte CH1_10 = (byte) 6;
-	protected final static byte CH2_1  = (byte) 8;
+	protected final static byte CH2_1 = (byte) 8;
 	protected final static byte CH2_10 = (byte) 9;
 	protected final static byte CH_BATTERY = (byte) 15;
-	
+
 	protected final static int ALL_BLOCKS = 7;
 
 	/*
-	 *  ADC acquisition parameters - from MainModule.bas
+	 * ADC acquisition parameters - from MainModule.bas
 	 *
-	 * 5 (FOSC/16) is the fastest that seems to work (outside spec!); maybe use 2 (FOSC/32) instead (still a bit outside spec)
-	 * Public Const ADCS As Long = 2 
+	 * 5 (FOSC/16) is the fastest that seems to work (outside spec!); maybe use 2
+	 * (FOSC/32) instead (still a bit outside spec) Public Const ADCS As Long = 2
 	 *
-	 * minimal valid values: >= 3 for FOSC/64; >=5 (12 Tad) for FOSC/32; 7 (20 Tad) for FOSC/16
-	 * Fosc=48 MHz, ADCS 6 = FOSC/64, ACQT 3 =  6 Tad --> Tacq_min = 64 * (11 +  6 + 2) / 48 = 25.33 us
- 	 * Fosc=48 MHz, ADCS 2 = FOSC/32, ACQT 5 = 12 Tad --> Tacq_min = 32 * (11 + 12 + 2) / 48 = 16.67 us
-	 * Fosc=48 MHz, ADCS 5 = FOSC/16, ACQT 7 = 20 Tad --> Tacq_min = 16 * (11 + 20 + 2) / 48 = 11.00 us
- 	 * Public Const ACQT As Long = 5 
-  	 */
-	
+	 * minimal valid values: >= 3 for FOSC/64; >=5 (12 Tad) for FOSC/32; 7 (20 Tad)
+	 * for FOSC/16 Fosc=48 MHz, ADCS 6 = FOSC/64, ACQT 3 = 6 Tad --> Tacq_min = 64 *
+	 * (11 + 6 + 2) / 48 = 25.33 us Fosc=48 MHz, ADCS 2 = FOSC/32, ACQT 5 = 12 Tad
+	 * --> Tacq_min = 32 * (11 + 12 + 2) / 48 = 16.67 us Fosc=48 MHz, ADCS 5 =
+	 * FOSC/16, ACQT 7 = 20 Tad --> Tacq_min = 16 * (11 + 20 + 2) / 48 = 11.00 us
+	 * Public Const ACQT As Long = 5
+	 */
+
 	private final static int ADCS = 2;
 	private final static int ACQT = 5;
 
@@ -71,7 +72,7 @@ public class DPScope extends Observable {
 
 	private float[] channels = new float[2];
 	private boolean run_RollMode = false;
-	
+
 	private static float[] scopeBuffer = new float[448];
 	private static int currBlock = 0;
 
@@ -111,7 +112,7 @@ public class DPScope extends Observable {
 		currCmd = Command.CMD_IDLE;
 		signalCh1 = 0;
 		signalCh2 = 0;
-//		pool = Executors.newSingleThreadExecutor();
+		// pool = Executors.newSingleThreadExecutor();
 	}
 
 	public boolean isDevicePresent() {
@@ -141,23 +142,23 @@ public class DPScope extends Observable {
 			deviceOpen = true;
 			isReady = true;
 			pool = Executors.newSingleThreadExecutor();
-//			this.addObserver(new Observer() {
-//
-//				@Override
-//				public void update(Observable o, Object arg) {
-//					// TODO Auto-generated method stub
-//					// actionQueue.remove();
-//					if (run_RollMode) {
-//						readADC(ch1, ch2);
-//					}
-//					// System.out.println("List size: " + actionQueue.size());
-//					// System.out.format("%f\n", (double) (System.nanoTime() - currTime) /
-//					// 1_000_000_000.0);
-//					// currTime = System.nanoTime();
-//					// callCount++;
-//					// System.out.println(callCount + " times");
-//				}
-//			});
+			// this.addObserver(new Observer() {
+			//
+			// @Override
+			// public void update(Observable o, Object arg) {
+			// // TODO Auto-generated method stub
+			// // actionQueue.remove();
+			// if (run_RollMode) {
+			// readADC(ch1, ch2);
+			// }
+			// // System.out.println("List size: " + actionQueue.size());
+			// // System.out.format("%f\n", (double) (System.nanoTime() - currTime) /
+			// // 1_000_000_000.0);
+			// // currTime = System.nanoTime();
+			// // callCount++;
+			// // System.out.println(callCount + " times");
+			// }
+			// });
 
 			try {
 				hidDev = PureJavaHidApi.openDevice(devInfo);
@@ -200,10 +201,10 @@ public class DPScope extends Observable {
 							if (rxBuf[0] > 0) {
 								System.out.printf("Current acquisition %s acquired\n",
 										(rxBuf[0] > 0) ? ("is now") : "not");
-								
-//								for (int i = 0; i < 7; i++) {
-//									readBack(i);
-//								}
+
+								// for (int i = 0; i < 7; i++) {
+								// readBack(i);
+								// }
 								isDone = true;
 								mapOfArguments.put(Command.CMD_DONE, null);
 								setChanged();
@@ -219,29 +220,29 @@ public class DPScope extends Observable {
 							break;
 						case CMD_READBACK:
 							// read back each block of 64 bytes
-//							System.out.print("Readback rxBuf - block " + currBlock + "\n");
-//							int ch1 = 0, ch2 = 0;
+							// System.out.print("Readback rxBuf - block " + currBlock + "\n");
+							// int ch1 = 0, ch2 = 0;
 							for (int idx = 0; idx < 64; idx++) {
 								// System.out.print(rxBuf[idx] - 127 + " ");
 								// if(rxBuf[ids
-//								ch1 += (int) ((rxBuf[idx] & 0xFF) << 2) - 127 * 0;
-//								ch2 += (int) ((rxBuf[idx + 1] & 0xFF) << 2) - 127 * 0;
-								scopeBuffer[idx + ((int)txBuf[1]) * 64] = (int) ((rxBuf[idx] & 0xFF) << 2);
+								// ch1 += (int) ((rxBuf[idx] & 0xFF) << 2) - 127 * 0;
+								// ch2 += (int) ((rxBuf[idx + 1] & 0xFF) << 2) - 127 * 0;
+								scopeBuffer[idx + ((int) txBuf[1]) * 64] = (int) ((rxBuf[idx] & 0xFF) << 2);
 							}
-//							signalCh1 = ch1 / 32;
-//							signalCh2 = ch2 / 32;
-//							System.out.println("Channel 1 -> " + signalCh1);
-//							System.out.println("Channel 2 -> " + signalCh2);
-							
-							if(currBlock == 6) {
+							// signalCh1 = ch1 / 32;
+							// signalCh2 = ch2 / 32;
+							// System.out.println("Channel 1 -> " + signalCh1);
+							// System.out.println("Channel 2 -> " + signalCh2);
+
+							if (currBlock == 6) {
 								// all blocks read from
-//								System.out.println("CMD_READBACK - all blocks read");
+								// System.out.println("CMD_READBACK - all blocks read");
 								mapOfArguments.put(Command.CMD_READBACK, scopeBuffer);
 								setChanged();
 								notifyObservers(mapOfArguments);
 							}
 							isReady = true;
-//							isDone = false;
+							// isDone = false;
 							break;
 						case CMD_READADC:
 							signalCh1 = ((int) (((rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF)) & 0xFF) - 511);
@@ -288,8 +289,8 @@ public class DPScope extends Observable {
 							usbSupplyVoltage = (float) 4.096 * 1023
 									/ ((int) (rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF));
 							channels[0] = usbSupplyVoltage;
-//							channels[0] = avgVolts / count;
-//							System.out.printf("USB voltage: %.3f\n", avgVolts / count);
+							// channels[0] = avgVolts / count;
+							// System.out.printf("USB voltage: %.3f\n", avgVolts / count);
 							mapOfArguments.put(Command.CMD_CHECK_USB_SUPPLY, channels);
 							setChanged();
 							notifyObservers(mapOfArguments);
@@ -352,16 +353,13 @@ public class DPScope extends Observable {
 
 	// CMD_ARM (5) - Sets all acquisition parameters and arms scope
 	/*
-    ' ARM parameters (watch out, VB array is 1-based, MikroC array is 0-based)
-    '  1: command
-    '  2: first channel to acquire
-    '  3: second channel to acquire
-    '  4: acquisition parameters (sample clock divider, acquisition time)
-    '  5: timer 0 preload high
-    '  6: timer 0 preload low
-    '  7: timer 0 prescaler bypass (0 = use prescaler, 1 = bypass prescaler)
-    '  8: timer 0 prescaler as power of 2 (7=div256, 0=div2): divide = 2^(PS+1)
-	*/
+	 * ' ARM parameters (watch out, VB array is 1-based, MikroC array is 0-based) '
+	 * 1: command ' 2: first channel to acquire ' 3: second channel to acquire ' 4:
+	 * acquisition parameters (sample clock divider, acquisition time) ' 5: timer 0
+	 * preload high ' 6: timer 0 preload low ' 7: timer 0 prescaler bypass (0 = use
+	 * prescaler, 1 = bypass prescaler) ' 8: timer 0 prescaler as power of 2
+	 * (7=div256, 0=div2): divide = 2^(PS+1)
+	 */
 	public void armScope(byte ch1, byte ch2) {
 		actionQueue.add(new BootAction() {
 			@Override
@@ -373,26 +371,26 @@ public class DPScope extends Observable {
 				txBuf[3] = ADC_ACQ;
 				txBuf[4] = (byte) 255; // timer MSB - TimerPreloadHigh
 				txBuf[5] = (byte) 10; // timer LSB - TimerPreloadLow
-				txBuf[6] = (byte) 1; // prescaler bypass 
-									// 0 = use prescaler
-									// 1 = bypass prescaler
-				txBuf[7] = 0x00;    // prescaler selection as power of 2 (7=div256,
+				txBuf[6] = (byte) 1; // prescaler bypass
+										// 0 = use prescaler
+										// 1 = bypass prescaler
+				txBuf[7] = 0x00; // prescaler selection as power of 2 (7=div256,
 									// 0=div2)
 				txBuf[8] = (byte) 2; // sample shift first channel
 				txBuf[9] = (byte) 2; // sample shift second channel
 				txBuf[10] = (byte) 0; // sample subtract first channel
 				txBuf[11] = (byte) 0; // sample subtract second channel
-				txBuf[12] = 0x00;    // trigger source (0 = auto, 1 = triggered)
-				txBuf[13] = 0x00;    // trigger polarity 
+				txBuf[12] = 0x00; // trigger source (0 = auto, 1 = triggered)
+				txBuf[13] = 0x00; // trigger polarity
 									// 0 = falling edge
 									// 1 = rising edge
 				txBuf[14] = 0x00; // trigger level MSB (currently not used)
 				txBuf[15] = 0x00; // trigger level LSB (only applicable if
 									// triggering on
 				// CH1, not for ext. trigger)
-				txBuf[16] = (byte) 0; // sampling mode: 
-									 // 0 = real time, 
-									 // 1 = equivalent time)
+				txBuf[16] = (byte) 0; // sampling mode:
+										// 0 = real time,
+										// 1 = equivalent time)
 				txBuf[17] = (byte) 2; // equivalent time sample interval in 0.5 usec
 				// increments
 				txBuf[18] = (byte) (txBuf[17] >> 1); // equivalent time trigger
@@ -400,7 +398,7 @@ public class DPScope extends Observable {
 				// of byte 17 value is a good
 				// choice)
 				txBuf[19] = (byte) 1; // trigger channel to use (1 = CH1 gain 1, 2 =
-									// CH1
+										// CH1
 				// gain 10, 3 = ext. trigger)
 				length = 20;
 				currCmd = Command.CMD_ARM;
@@ -509,6 +507,7 @@ public class DPScope extends Observable {
 				return false;
 			}
 		});
+		startQueueIfStopped();
 	}
 
 	// CMD_WRITE_MEM (11) - Writes a byte to a memory location on the
@@ -713,39 +712,57 @@ public class DPScope extends Observable {
 		actionQueue.clear();
 	}
 
-	Thread processAction=new Thread(){
+	Thread processAction = new Thread() {
 
-	public void run(){try{BootAction bootItem=null;isReady=true;while(deviceOpen){if(isReady&&(actionQueue.size()>0)){
-	// if ((isReady && (actionQueue.size() >= 1)) || (actionQueue.size() == 1)) {
-	isReady=false;try{
-	// actionQueue.element().go();
-	// if (actionQueue.size() > 10) {
-	// actionQueue.remove();
-	// }
-	// actionQueue.element().go();
-	bootItem=actionQueue.poll();if(bootItem!=null){bootItem.go();}else{System.out.println("Error - Empty actionQueue!");break;}
+		public void run() {
+			try {
+				BootAction bootItem = null;
+				isReady = true;
+				while (deviceOpen) {
+					if (isReady && (actionQueue.size() > 0)) {
+						// if ((isReady && (actionQueue.size() >= 1)) || (actionQueue.size() == 1)) {
+						isReady = false;
+						try {
+							// actionQueue.element().go();
+							// if (actionQueue.size() > 10) {
+							// actionQueue.remove();
+							// }
+							// actionQueue.element().go();
+							bootItem = actionQueue.poll();
+							if (bootItem != null) {
+								bootItem.go();
+							} else {
+								System.out.println("Error - Empty actionQueue!");
+								break;
+							}
 
-	}catch(Exception e){
-	// TODO Auto-generated catch block
-	e.printStackTrace();}
+						} catch (Exception e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
 
-	}else{
-	// Shouldn't enter here if pending tasks
-	// are updated faster than this timeout..
-	Thread.sleep(0);
-	// if (actionQueue.size() > 0) {
-	// actionQueue.remove();
-	// }
-	}
+					} else {
+						// Shouldn't enter here if pending tasks
+						// are updated faster than this timeout..
+						Thread.sleep(0);
+						// if (actionQueue.size() > 0) {
+						// actionQueue.remove();
+						// }
+					}
 
-	// if (actionQueue.size() == 0) {
-	// return;
-	// }
-	}
-	// if scope not/no longer connected
-	actionQueue.clear();
-	// pool.shutdown();
-	return;}catch(InterruptedException v){System.out.println(v);}}};
+					// if (actionQueue.size() == 0) {
+					// return;
+					// }
+				}
+				// if scope not/no longer connected
+				actionQueue.clear();
+				// pool.shutdown();
+				return;
+			} catch (InterruptedException v) {
+				System.out.println(v);
+			}
+		}
+	};
 
 	private void waitForResponse() {
 		int loopCount = 0;

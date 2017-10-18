@@ -55,14 +55,15 @@ public class TestApp {
 				// }
 				// myScope.checkUsbSupply();
 				
-				timeCapture = System.nanoTime();
-				runScan_ScopeMode();
+//				timeCapture = System.nanoTime();
+//				runScan_ScopeMode();
+				myScope.toggleLed(true);
 //				Thread.sleep(5000);
 //				runScan_ScopeMode();
 				
 //				runScan_ScopeMode();
 				
-				Thread.sleep(500);
+				Thread.sleep(1000);
 
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
@@ -70,8 +71,8 @@ public class TestApp {
 			}
 
 			myScope.disconnect();
-			System.out.println("TestApp - Time elapsed: " + (timeElapsed / 1e9) + " seconds");
-			System.out.println("TestApp - Equivalent refresh rate: " + (1e9/timeElapsed) + " Hz");
+//			System.out.println("TestApp - Time elapsed: " + (timeElapsed / 1e9) + " seconds");
+//			System.out.println("TestApp - Equivalent refresh rate: " + (1e9/timeElapsed) + " Hz");
 		} else {
 			System.out.println("TestApp - No device present");
 		}
