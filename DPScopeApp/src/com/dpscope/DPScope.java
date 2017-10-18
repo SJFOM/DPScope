@@ -2,13 +2,11 @@ package com.dpscope;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -29,6 +27,8 @@ public class DPScope extends Observable {
 	protected final static byte CH2_1  = (byte) 8;
 	protected final static byte CH2_10 = (byte) 9;
 	protected final static byte CH_BATTERY = (byte) 15;
+	
+	protected final static int ALL_BLOCKS = 7;
 
 	/*
 	 *  ADC acquisition parameters - from MainModule.bas
@@ -53,8 +53,8 @@ public class DPScope extends Observable {
 	private HidDevice hidDev;
 	private HidDeviceInfo devInfo;
 
-	public boolean isDone = false;
-	public boolean isReady = false;
+	protected boolean isDone = false;
+	protected boolean isReady = false;
 
 	private Command currCmd;
 
@@ -66,8 +66,7 @@ public class DPScope extends Observable {
 	private volatile int signalCh1;
 	private volatile int signalCh2;
 
-	public List<BootAction> actionList = new ArrayList<BootAction>();
-	public Queue<BootAction> actionQueue = new LinkedList<BootAction>();
+	protected Queue<BootAction> actionQueue = new LinkedList<BootAction>();
 	private ExecutorService pool;
 
 	private float[] channels = new float[2];
@@ -193,6 +192,9 @@ public class DPScope extends Observable {
 						case CMD_ARM:
 							System.out.println("Scope Armed...");
 							isReady = true;
+							mapOfArguments.put(Command.CMD_ARM, null);
+							setChanged();
+							notifyObservers(mapOfArguments);
 							break;
 						case CMD_DONE:
 							if (rxBuf[0] > 0) {
@@ -419,7 +421,7 @@ public class DPScope extends Observable {
 				length = 1;
 				currCmd = Command.CMD_DONE;
 				isDone = false;
-				sendAndWait();
+				sendNoWait();
 				return false;
 			}
 		});
@@ -453,7 +455,7 @@ public class DPScope extends Observable {
 				length = 2;
 				currCmd = Command.CMD_READBACK;
 				currBlock = block;
-//				sendAndWait();
+				// sendAndWait();
 				sendNoWait();
 				return false;
 			}
@@ -663,7 +665,7 @@ public class DPScope extends Observable {
 	}
 
 	public void checkUsbSupply(int count) {
-//		actionQueue.clear();
+		// actionQueue.clear();
 		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
@@ -711,67 +713,48 @@ public class DPScope extends Observable {
 		actionQueue.clear();
 	}
 
-	Thread processAction = new Thread() {
+	Thread processAction=new Thread(){
 
-		public void run() {
-			try {
-				BootAction bootItem = null;
-				isReady = true;
-				while (deviceOpen) {
-					if (isReady && (actionQueue.size() > 0)) {
-//						if ((isReady && (actionQueue.size() >= 1)) || (actionQueue.size() == 1)) {
-						isReady = false;
-						try {
-//							actionQueue.element().go();
-//							if (actionQueue.size() > 10) {
-//								actionQueue.remove();
-//							}
-//							actionQueue.element().go();
-							bootItem = actionQueue.poll();
-							if(bootItem != null) {
-								bootItem.go();
-							} else {
-								System.out.println("Error - Empty actionQueue!");
-								break;
-							}
-							
-						} catch (Exception e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
+	public void run(){try{BootAction bootItem=null;isReady=true;while(deviceOpen){if(isReady&&(actionQueue.size()>0)){
+	// if ((isReady && (actionQueue.size() >= 1)) || (actionQueue.size() == 1)) {
+	isReady=false;try{
+	// actionQueue.element().go();
+	// if (actionQueue.size() > 10) {
+	// actionQueue.remove();
+	// }
+	// actionQueue.element().go();
+	bootItem=actionQueue.poll();if(bootItem!=null){bootItem.go();}else{System.out.println("Error - Empty actionQueue!");break;}
 
-					} 
-					else {
-						// Shouldn't enter here if pending tasks
-						// are updated faster than this timeout..
-						Thread.sleep(0);
-						// if (actionQueue.size() > 0) {
-						// actionQueue.remove();
-						// }
-					}
+	}catch(Exception e){
+	// TODO Auto-generated catch block
+	e.printStackTrace();}
 
-//					if (actionQueue.size() == 0) {
-//						return;
-//					}
-				}
-				// if scope not/no longer connected
-				actionQueue.clear();
-				// pool.shutdown();
-				return;
-			} catch (InterruptedException v) {
-				System.out.println(v);
-			}
-		}
-	};
+	}else{
+	// Shouldn't enter here if pending tasks
+	// are updated faster than this timeout..
+	Thread.sleep(0);
+	// if (actionQueue.size() > 0) {
+	// actionQueue.remove();
+	// }
+	}
+
+	// if (actionQueue.size() == 0) {
+	// return;
+	// }
+	}
+	// if scope not/no longer connected
+	actionQueue.clear();
+	// pool.shutdown();
+	return;}catch(InterruptedException v){System.out.println(v);}}};
 
 	private void waitForResponse() {
 		int loopCount = 0;
 		int interval = 5;
 		final int loopCountTotal = (int) Math.ceil(((double) 100) / ((double) interval));
 		while (true) {
-//			if (isReady) {
-//				break;
-//			}
+			// if (isReady) {
+			// break;
+			// }
 
 			if (loopCount++ >= loopCountTotal) {
 				break;

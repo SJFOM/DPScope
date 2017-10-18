@@ -271,7 +271,7 @@ public class DTSCTest extends ApplicationFrame {
 	public float runScan_ScopeMode(int channel) {
 		float[] newData = new float[1];
 		// if (myScope.isDone) {
-		if (!(myScope.actionList.size() > 0)) {
+		if (!(myScope.actionQueue.size() > 0)) {
 			myScope.readBack(0);
 
 			if (channel == 1) {
