@@ -191,7 +191,7 @@ public class DPScope extends Observable {
 							// isReady = true;
 							break;
 						case CMD_ARM:
-							System.out.println("Scope Armed...");
+//							System.out.println("Scope Armed...");
 							isReady = true;
 							mapOfArguments.put(Command.CMD_ARM, null);
 							setChanged();
@@ -199,8 +199,8 @@ public class DPScope extends Observable {
 							break;
 						case CMD_DONE:
 							if (rxBuf[0] > 0) {
-								System.out.printf("Current acquisition %s acquired\n",
-										(rxBuf[0] > 0) ? ("is now") : "not");
+//								System.out.printf("Current acquisition %s acquired\n",
+//										(rxBuf[0] > 0) ? ("is now") : "not");
 
 								// for (int i = 0; i < 7; i++) {
 								// readBack(i);
