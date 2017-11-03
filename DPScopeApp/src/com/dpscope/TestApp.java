@@ -15,7 +15,7 @@ public class TestApp {
 	private static LinkedHashMap<Command, float[]> parsedMap;
 
 	private static float[] lastData = new float[1];
-	private static float[] scopeBuffer = new float[448];
+	//	private static float[] scopeBuffer = new float[448];
 
 	private static boolean isDone = false;
 	private static boolean isArmed = false;
@@ -23,7 +23,7 @@ public class TestApp {
 	private static long timeCapture = 0l;
 	private static long timeElapsed = 0l;
 
-	private static int numRuns = 10;
+	private static int numRuns = 2;
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
@@ -41,11 +41,12 @@ public class TestApp {
 						System.out.println(
 								"TestApp - USB supply: " + parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0] + " Volts");
 					} else if (parsedMap.containsKey(Command.CMD_READBACK)) {
-						// for (int i = 1; i < scopeBuffer.length; i += 2) {
-						// System.out.println(i + " - " + scopeBuffer[i]);
-						// }
+						for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i+= 2) {
+//							System.out.println(i + " - " + myScope.scopeBuffer[i]);
+							System.out.println(myScope.scopeBuffer[i]);
+						}
 						timeElapsed = System.nanoTime() - timeCapture;
-						System.out.println("TestApp - CMD_READBACK - all blocks read");
+//						System.out.println("TestApp - CMD_READBACK - all blocks read");
 					} else if (parsedMap.containsKey(Command.CMD_DONE)) {
 						isDone = true;
 					} else if (parsedMap.containsKey(Command.CMD_ARM)) {
@@ -59,17 +60,14 @@ public class TestApp {
 				// for (int i = 0; i < 1; i++) {
 				// myScope.checkUsbSupply();
 				// }
-				myScope.checkUsbSupply();
+//				myScope.checkUsbSupply();
 
 				timeCapture = System.nanoTime();
 
 				for (int i = 0; i < numRuns; i++) {
 					runScan_ScopeMode();
-//					System.out.println("Run: " + i);
 				}
 
-				myScope.toggleLed(false);
-				
 				Thread.sleep(1000);
 
 			} catch (InterruptedException e) {

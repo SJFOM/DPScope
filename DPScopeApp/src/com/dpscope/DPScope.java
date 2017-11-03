@@ -29,6 +29,9 @@ public class DPScope extends Observable {
 	protected final static byte CH_BATTERY = (byte) 15;
 
 	protected final static int ALL_BLOCKS = 7;
+	
+	// First 422 (of 448) bytes are valid in readBack - rest is junk
+	protected final static int MAX_READABLE_SIZE = 422;
 
 	/*
 	 * ADC acquisition parameters - from MainModule.bas
@@ -73,15 +76,15 @@ public class DPScope extends Observable {
 	private float[] channels = new float[2];
 	private boolean run_RollMode = false;
 
-	private static float[] scopeBuffer = new float[448];
+	public float[] scopeBuffer = new float[448];
 	private static int currBlock = 0;
 
 	public long currTime = 0;
 
 	public int callCount = 0;
-
-	private byte ch1;
-	private byte ch2;
+	
+	 private byte ch1 = 0;
+	 private byte ch2 = 0;
 
 	public static enum Command {
 		CMD_IDLE,
@@ -112,7 +115,6 @@ public class DPScope extends Observable {
 		currCmd = Command.CMD_IDLE;
 		signalCh1 = 0;
 		signalCh2 = 0;
-		// pool = Executors.newSingleThreadExecutor();
 	}
 
 	public boolean isDevicePresent() {
@@ -199,12 +201,6 @@ public class DPScope extends Observable {
 							break;
 						case CMD_DONE:
 							if (rxBuf[0] > 0) {
-//								System.out.printf("Current acquisition %s acquired\n",
-//										(rxBuf[0] > 0) ? ("is now") : "not");
-
-								// for (int i = 0; i < 7; i++) {
-								// readBack(i);
-								// }
 								isDone = true;
 								mapOfArguments.put(Command.CMD_DONE, null);
 								setChanged();
@@ -220,19 +216,12 @@ public class DPScope extends Observable {
 							break;
 						case CMD_READBACK:
 							// read back each block of 64 bytes
-							// System.out.print("Readback rxBuf - block " + currBlock + "\n");
-							// int ch1 = 0, ch2 = 0;
+							// First 422 bytes (of 448) are good - rest is junk
+							int buffOffset = ((int) txBuf[1]) * 64;
+							// TODO: Read back 38 bytes (instead of 64) if currBlock = 6
 							for (int idx = 0; idx < 64; idx++) {
-								// System.out.print(rxBuf[idx] - 127 + " ");
-								// if(rxBuf[ids
-								// ch1 += (int) ((rxBuf[idx] & 0xFF) << 2) - 127 * 0;
-								// ch2 += (int) ((rxBuf[idx + 1] & 0xFF) << 2) - 127 * 0;
-								scopeBuffer[idx + ((int) txBuf[1]) * 64] = (int) ((rxBuf[idx] & 0xFF) << 2);
+								scopeBuffer[idx + buffOffset] = (int) ((rxBuf[idx] & 0xFF) - 127);
 							}
-							// signalCh1 = ch1 / 32;
-							// signalCh2 = ch2 / 32;
-							// System.out.println("Channel 1 -> " + signalCh1);
-							// System.out.println("Channel 2 -> " + signalCh2);
 
 							if (currBlock == 6) {
 								// all blocks read from
