@@ -1,19 +1,32 @@
 package com.dpscope;
 
 import java.io.IOException;
+import java.net.URL;
+import java.util.Random;
+import java.util.ResourceBundle;
 
 import javafx.application.Application;
+import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.fxml.Initializable;
 import javafx.scene.Scene;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.XYChart;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 
-public class MainApp extends Application {
+public class MainApp extends Application implements Initializable {
 
     private Stage primaryStage;
     private BorderPane rootLayout;
+    
+    private static final int COUNT = 8 * 60;
+    private static final Random random = new Random();
 
+    @FXML
+    private LineChart<Double, Double> lineGraph;
+    
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -22,6 +35,20 @@ public class MainApp extends Application {
         initRootLayout();
 
         showPersonOverview();
+        
+        initChart();
+    }
+    
+    /**
+     * Initializes the chart.
+     */
+    @FXML
+    public void initChart() {
+    	final XYChart.Series<Double, Double> series = new XYChart.Series<Double, Double>();
+		for (int i = 0; i < COUNT; i++) {
+			plotPoint(float) (random.nextGaussian() * 3);
+		}
+		series.getData()
     }
 
     /**
@@ -52,9 +79,11 @@ public class MainApp extends Application {
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(MainApp.class.getResource("view/DPScopeOverview.fxml"));
             AnchorPane dpscopeOverview = (AnchorPane) loader.load();
-
+           
+            
             // Set person overview into the center of root layout.
             rootLayout.setCenter(dpscopeOverview);
+            
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -77,4 +106,10 @@ public class MainApp extends Application {
         	myScope.toggleLed(false);
         }
     }
+
+	@Override
+	public void initialize(URL arg0, ResourceBundle arg1) {
+		// TODO Auto-generated method stub
+		
+	}
 }
