@@ -11,7 +11,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Scene;
 import javafx.scene.chart.LineChart;
-import javafx.scene.chart.XYChart;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
@@ -63,11 +62,20 @@ public class MainApp extends Application implements Initializable {
 
 			// Show the scene containing the root layout.
 			Scene scene = new Scene(rootLayout);
-			primaryStage.setScene(scene);
+			
 
 			scene.getStylesheets().add(MainApp.class.getResource("view/stylesheet.css").toExternalForm());
-			primaryStage.show();
-
+			
+			
+			setUserAgentStylesheet(STYLESHEET_MODENA);
+			
+//			JFXButton jfoenixButton = new JFXButton("JFoenix Button");
+//			JFXButton button = new JFXButton("Raised Button".toUpperCase());
+//			button.getStyleClass().add("button-raised");
+//			
+//			rootLayout.getChildren().add(button);
+			
+			primaryStage.setScene(scene);
 			primaryStage.show();
 		} catch (IOException e) {
 			e.printStackTrace();
