@@ -25,7 +25,7 @@
                            <content>
                               <Pane prefHeight="239.0" prefWidth="174.0">
                                  <children>
-                                    <Button fx:id="start_stop" layoutX="14.0" layoutY="14.0" mnemonicParsing="false" text="Start" />
+                                    <Button fx:id="start_stop" layoutX="14.0" layoutY="14.0" mnemonicParsing="false" onAction="#fillChart" text="Start" />
                                     <Button fx:id="speed" layoutX="108.0" layoutY="14.0" mnemonicParsing="false" text="FAST" />
                                     <Button fx:id="getVusb" layoutX="14.0" layoutY="64.0" mnemonicParsing="false" text="Vusb" />
                                     <Button fx:id="readScope" layoutX="108.0" layoutY="64.0" mnemonicParsing="false" text="Read" />
@@ -56,10 +56,10 @@
                <children>
                   <LineChart fx:id="ScopeChart" layoutY="14.0" prefHeight="298.0" prefWidth="416.0" title="ScopeChart" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                     <xAxis>
-                      <CategoryAxis side="BOTTOM" />
+                      <CategoryAxis label="x_axis" side="BOTTOM" fx:id="x_axis" />
                     </xAxis>
                     <yAxis>
-                      <NumberAxis side="LEFT" />
+                      <NumberAxis fx:id="y_axis" side="LEFT" />
                     </yAxis>
                   </LineChart>
                </children>

@@ -5,6 +5,8 @@ import java.net.URL;
 import java.util.Random;
 import java.util.ResourceBundle;
 
+import com.dpscope.view.SampleController;
+
 import javafx.application.Application;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -35,6 +37,8 @@ public class MainApp extends Application implements Initializable {
 
         showPersonOverview();
         
+//        SampleController smplController = new SampleController();
+        
 //        initChart();
     }
     
@@ -64,10 +68,10 @@ public class MainApp extends Application implements Initializable {
 			Scene scene = new Scene(rootLayout);
 			
 
-			scene.getStylesheets().add(MainApp.class.getResource("view/stylesheet.css").toExternalForm());
+			scene.getStylesheets().add(getClass().getResource("view/stylesheet.css").toExternalForm());
 			
 			
-			setUserAgentStylesheet(STYLESHEET_MODENA);
+			setUserAgentStylesheet(STYLESHEET_CASPIAN);
 			
 //			JFXButton jfoenixButton = new JFXButton("JFoenix Button");
 //			JFXButton button = new JFXButton("Raised Button".toUpperCase());
