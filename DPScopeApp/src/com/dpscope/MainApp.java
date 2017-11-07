@@ -36,39 +36,43 @@ public class MainApp extends Application implements Initializable {
 
         showPersonOverview();
         
-        initChart();
+//        initChart();
     }
     
     /**
      * Initializes the chart.
      */
-    @FXML
-    public void initChart() {
-    	final XYChart.Series<Double, Double> series = new XYChart.Series<Double, Double>();
-		for (int i = 0; i < COUNT; i++) {
-			plotPoint(float) (random.nextGaussian() * 3);
-		}
-		series.getData()
-    }
+//    @FXML
+//    public void initChart() {
+//    	final XYChart.Series<Double, Double> series = new XYChart.Series<Double, Double>();
+//		for (int i = 0; i < COUNT; i++) {
+//			plotPoint(float) (random.nextGaussian() * 3);
+//		}
+//		series.getData()
+//    }
 
     /**
      * Initializes the root layout.
      */
-    public void initRootLayout() {
-        try {
-            // Load root layout from fxml file.
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("view/RootLayout.fxml"));
-            rootLayout = (BorderPane) loader.load();
+	public void initRootLayout() {
+		try {
+			// Load root layout from fxml file.
+			FXMLLoader loader = new FXMLLoader();
+			loader.setLocation(MainApp.class.getResource("view/RootLayout.fxml"));
+			rootLayout = (BorderPane) loader.load();
 
-            // Show the scene containing the root layout.
-            Scene scene = new Scene(rootLayout);
-            primaryStage.setScene(scene);
-            primaryStage.show();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+			// Show the scene containing the root layout.
+			Scene scene = new Scene(rootLayout);
+			primaryStage.setScene(scene);
+
+			scene.getStylesheets().add(MainApp.class.getResource("view/stylesheet.css").toExternalForm());
+			primaryStage.show();
+
+			primaryStage.show();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 
     /**
      * Shows the person overview inside the root layout.
