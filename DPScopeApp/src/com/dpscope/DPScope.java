@@ -22,16 +22,16 @@ public class DPScope extends Observable {
 	private final static short VID = (short) 0x04D8;
 	private final static short PID = (short) 0xF891;
 
-	protected final static byte CH1_1 = (byte) 5;
-	protected final static byte CH1_10 = (byte) 6;
-	protected final static byte CH2_1 = (byte) 8;
-	protected final static byte CH2_10 = (byte) 9;
-	protected final static byte CH_BATTERY = (byte) 15;
+	public final static byte CH1_1 = (byte) 5;
+	public final static byte CH1_10 = (byte) 6;
+	public final static byte CH2_1 = (byte) 8;
+	public final static byte CH2_10 = (byte) 9;
+	public final static byte CH_BATTERY = (byte) 15;
 
-	protected final static int ALL_BLOCKS = 7;
+	public final static int ALL_BLOCKS = 7;
 	
 	// First 422 (of 448) bytes are valid in readBack - rest is junk
-	protected final static int MAX_READABLE_SIZE = 422;
+	public final static int MAX_READABLE_SIZE = 422;
 
 	/*
 	 * ADC acquisition parameters - from MainModule.bas

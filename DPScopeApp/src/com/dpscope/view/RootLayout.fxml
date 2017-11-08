@@ -5,8 +5,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.layout.BorderPane?>
 
-
-<BorderPane prefHeight="400.0" prefWidth="600.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/8">
+<BorderPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.dpscope.view.SampleController">
    <top>
       <MenuBar BorderPane.alignment="CENTER">
         <menus>
@@ -15,9 +14,10 @@
               <MenuItem mnemonicParsing="false" text="Close" />
             </items>
           </Menu>
-          <Menu mnemonicParsing="false" text="Edit">
+          <Menu mnemonicParsing="false" text="Scope">
             <items>
-              <MenuItem mnemonicParsing="false" text="Delete" />
+              <MenuItem fx:id="menuItemConnect" mnemonicParsing="false" onAction="#connectScope" text="Connect" />
+                  <MenuItem fx:id="menuItemDisconnect" mnemonicParsing="false" onAction="#disconnectScope" text="Disconnect" />
             </items>
           </Menu>
           <Menu mnemonicParsing="false" text="Help">

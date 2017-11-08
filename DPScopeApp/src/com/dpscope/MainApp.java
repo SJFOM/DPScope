@@ -21,9 +21,6 @@ public class MainApp extends Application implements Initializable {
 
     private Stage primaryStage;
     private BorderPane rootLayout;
-    
-    private static final int COUNT = 8 * 60;
-    private static final Random random = new Random();
 
     @FXML
     private LineChart<Double, Double> lineGraph;
@@ -37,22 +34,7 @@ public class MainApp extends Application implements Initializable {
 
         showPersonOverview();
         
-//        SampleController smplController = new SampleController();
-        
-//        initChart();
     }
-    
-    /**
-     * Initializes the chart.
-     */
-//    @FXML
-//    public void initChart() {
-//    	final XYChart.Series<Double, Double> series = new XYChart.Series<Double, Double>();
-//		for (int i = 0; i < COUNT; i++) {
-//			plotPoint(float) (random.nextGaussian() * 3);
-//		}
-//		series.getData()
-//    }
 
     /**
      * Initializes the root layout.
@@ -71,7 +53,7 @@ public class MainApp extends Application implements Initializable {
 			scene.getStylesheets().add(getClass().getResource("view/stylesheet.css").toExternalForm());
 			
 			
-			setUserAgentStylesheet(STYLESHEET_CASPIAN);
+			setUserAgentStylesheet(STYLESHEET_MODENA);
 			
 //			JFXButton jfoenixButton = new JFXButton("JFoenix Button");
 //			JFXButton button = new JFXButton("Raised Button".toUpperCase());
@@ -115,12 +97,12 @@ public class MainApp extends Application implements Initializable {
 
     public static void main(String[] args) {
         launch(args);
-        DPScope myScope = new DPScope();
-        if(myScope.isDevicePresent()){
-        	myScope.connect();
-        	myScope.ping();
-        	myScope.toggleLed(false);
-        }
+//        DPScope myScope = new DPScope();
+//        if(myScope.isDevicePresent()){
+//        	myScope.connect();
+//        	myScope.ping();
+//        	myScope.toggleLed(false);
+//        }
     }
 
 	@Override
