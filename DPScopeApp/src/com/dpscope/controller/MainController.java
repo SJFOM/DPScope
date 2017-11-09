@@ -39,7 +39,7 @@ public class MainController implements Initializable {
 	private static long timeCapture = 0l;
 	private static long timeElapsed = 0l;
 
-	private ObservableList<XYChart.Data<Number, Number>> data = FXCollections.<XYChart.Data<Number, Number>>observableArrayList();
+	private static ObservableList<XYChart.Data<Number, Number>> data = FXCollections.<XYChart.Data<Number, Number>>observableArrayList();
 
 	@FXML
 	private Button start_stop;
@@ -67,14 +67,6 @@ public class MainController implements Initializable {
 
 	@FXML
 	private LineChart<Number, Number> ScopeChart;
-
-	public void disconnectScope() {
-		if (myScope != null) {
-			myScope.disconnect();
-			myScope = null;
-			myScope.deleteObservers();
-		}
-	}
 
 	@FXML
 	void fillChart(ActionEvent event) {
@@ -123,7 +115,7 @@ public class MainController implements Initializable {
 		// TODO Auto-generated method stub
 		System.out.println("Application started!");
 		
-//		FXMLLoader loader = new FXMLLoader(getClass().getResource("../view/RootLayout.fxml"));
+//		FXMLLoader loader = new FXMLLoader(getClass().getResource("../view/root/RootLayout.fxml"));
 //		try {
 //			Parent root = loader.load();
 //		} catch (IOException e1) {
@@ -131,13 +123,13 @@ public class MainController implements Initializable {
 //			e1.printStackTrace();
 //		}
 //		RootController tabRootController = loader.getController();
-		
-		try {
-			tabRootController.init(this);
-		} catch (Exception e) {
-			// TODO: handle exception
-			System.out.println("tabRootController is null");
-		}
+//		
+//		try {
+//			tabRootController.init(this);
+//		} catch (Exception e) {
+//			// TODO: handle exception
+//			System.out.println("tabRootController is null");
+//		}
 		
 		
 		ScopeChart.setAnimated(false);
@@ -145,7 +137,7 @@ public class MainController implements Initializable {
 
 	}
 	
-	public void setupScope() {
+	public static void setupScope() {
 		myScope = new DPScope();
 		if (myScope.isDevicePresent()) {
 			myScope.connect();
@@ -179,6 +171,14 @@ public class MainController implements Initializable {
 			});
 		} else {
 			System.out.println("SampleController - No device present");
+		}
+	}
+	
+	public static void disconnectScope() {
+		if (myScope != null) {
+			myScope.disconnect();		
+			myScope.deleteObservers();
+			myScope = null;
 		}
 	}
 
