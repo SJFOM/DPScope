@@ -31,13 +31,13 @@ public class MainApp extends Application {
 		try {
 			// Load root layout from fxml file.
 			FXMLLoader loader = new FXMLLoader();
-			loader.setLocation(MainApp.class.getResource("view/RootLayout.fxml"));
+			loader.setLocation(MainApp.class.getResource("view/root/RootLayout.fxml"));
 			rootLayout = (BorderPane) loader.load();
 
 			// Show the scene containing the root layout.
 			Scene scene = new Scene(rootLayout);
 			
-			scene.getStylesheets().add(getClass().getResource("view/stylesheet.css").toExternalForm());
+			scene.getStylesheets().add(getClass().getResource("stylesheet.css").toExternalForm());
 						
 			
 			
@@ -63,7 +63,7 @@ public class MainApp extends Application {
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(MainApp.class.getResource("view/DPScopeOverview.fxml"));
             AnchorPane dpscopeOverview = (AnchorPane) loader.load();
-            dpscopeOverview.getStylesheets().add(getClass().getResource("view/stylesheet.css").toExternalForm());
+            dpscopeOverview.getStylesheets().add(getClass().getResource("stylesheet.css").toExternalForm());
             
             // Set person overview into the center of root layout.
             rootLayout.setCenter(dpscopeOverview);

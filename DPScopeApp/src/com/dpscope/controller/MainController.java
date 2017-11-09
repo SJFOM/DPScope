@@ -9,6 +9,7 @@ import java.util.ResourceBundle;
 
 import com.dpscope.DPScope;
 import com.dpscope.DPScope.Command;
+import com.dpscope.controller.root.RootController;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -114,22 +115,22 @@ public class MainController implements Initializable {
 		}
 	}
 	
-//	@FXML 
-//	RootController tabRootController;
+	@FXML 
+	RootController tabRootController;
 
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		// TODO Auto-generated method stub
 		System.out.println("Application started!");
 		
-		FXMLLoader loader = new FXMLLoader(getClass().getResource("../view/RootLayout.fxml"));
-		try {
-			Parent root = loader.load();
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		RootController tabRootController = loader.getController();
+//		FXMLLoader loader = new FXMLLoader(getClass().getResource("../view/RootLayout.fxml"));
+//		try {
+//			Parent root = loader.load();
+//		} catch (IOException e1) {
+//			// TODO Auto-generated catch block
+//			e1.printStackTrace();
+//		}
+//		RootController tabRootController = loader.getController();
 		
 		try {
 			tabRootController.init(this);
