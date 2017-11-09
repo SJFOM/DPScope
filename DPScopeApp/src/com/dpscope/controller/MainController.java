@@ -1,5 +1,6 @@
-package com.dpscope.view;
+package com.dpscope.controller;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.LinkedHashMap;
 import java.util.Observable;
@@ -13,16 +14,16 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.scene.Parent;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.MenuBar;
-import javafx.scene.control.MenuItem;
 
-public class SampleController implements Initializable {
+public class MainController implements Initializable {
 
 	private static DPScope myScope;
 
@@ -65,16 +66,85 @@ public class SampleController implements Initializable {
 
 	@FXML
 	private LineChart<Number, Number> ScopeChart;
-	
+
+	public void disconnectScope() {
+		if (myScope != null) {
+			myScope.disconnect();
+			myScope = null;
+			myScope.deleteObservers();
+		}
+	}
+
 	@FXML
-    private MenuItem menuItemDisconnect;
+	void fillChart(ActionEvent event) {
+		// Graph Series
 
-    @FXML
-    private MenuItem menuItemConnect;
-    
+		if (myScope != null) {
+			runScan_ScopeMode();
+			try {
+				Thread.sleep(200);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 
-    @FXML
-	void connectScope(ActionEvent event) {
+		} else {
+			// fill with random data
+			for (int i = 0; i < 1000; i++)
+				data.add(new XYChart.Data<>(Math.random(), Math.random()));
+			System.out.println("No scope connected");
+		}
+
+		XYChart.Series series = new XYChart.Series(data);
+		ScopeChart.getData().add(series);
+	}
+
+	@FXML
+	void clearChart(ActionEvent event) {
+		ScopeChart.getData().clear();
+		data.clear();
+	}
+
+	@FXML
+	void setChartAnimation(ActionEvent event) {
+		if (toggleAnimation.isSelected()) {
+			ScopeChart.setAnimated(true);
+		} else {
+			ScopeChart.setAnimated(false);
+		}
+	}
+	
+//	@FXML 
+//	RootController tabRootController;
+
+	@Override
+	public void initialize(URL location, ResourceBundle resources) {
+		// TODO Auto-generated method stub
+		System.out.println("Application started!");
+		
+		FXMLLoader loader = new FXMLLoader(getClass().getResource("../view/RootLayout.fxml"));
+		try {
+			Parent root = loader.load();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		RootController tabRootController = loader.getController();
+		
+		try {
+			tabRootController.init(this);
+		} catch (Exception e) {
+			// TODO: handle exception
+			System.out.println("tabRootController is null");
+		}
+		
+		
+		ScopeChart.setAnimated(false);
+		ScopeChart.setLegendVisible(false);
+
+	}
+	
+	public void setupScope() {
 		myScope = new DPScope();
 		if (myScope.isDevicePresent()) {
 			myScope.connect();
@@ -91,7 +161,8 @@ public class SampleController implements Initializable {
 					} else if (parsedMap.containsKey(Command.CMD_READBACK)) {
 						int j = 0;
 						for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i += 2) {
-							// System.out.println(i + " - " + myScope.scopeBuffer[i]);
+							// System.out.println(i + " - " +
+							// myScope.scopeBuffer[i]);
 							// System.out.println(myScope.scopeBuffer[i]);
 							data.add(new XYChart.Data<>(j++, myScope.scopeBuffer[i]));
 						}
@@ -108,58 +179,6 @@ public class SampleController implements Initializable {
 		} else {
 			System.out.println("SampleController - No device present");
 		}
-	}
-
-    @FXML
-    void disconnectScope(ActionEvent event) {
-    		if(myScope != null) {
-    			myScope.disconnect();
-    			myScope = null;
-    			myScope.deleteObservers();
-    		}
-    }
-
-	@FXML
-	void fillChart(ActionEvent event) {
-		// Graph Series
-
-		runScan_ScopeMode();
-		try {
-			Thread.sleep(200);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-//		for (int i = 0; i < 1000; i++)
-//			data.add(new XYChart.Data<>(Math.random(), Math.random()));
-		XYChart.Series series = new XYChart.Series(data);
-		ScopeChart.getData().add(series);
-	}
-
-	@FXML
-	void clearChart(ActionEvent event) {
-		ScopeChart.getData().clear();
-	}
-
-	@FXML
-	void setChartAnimation(ActionEvent event) {
-		if (toggleAnimation.isSelected()) {
-			ScopeChart.setAnimated(true);
-		} else {
-			ScopeChart.setAnimated(false);
-		}
-	}
-
-	@Override
-	public void initialize(URL location, ResourceBundle resources) {
-		// TODO Auto-generated method stub
-
-		ScopeChart.setAnimated(false);
-		ScopeChart.setLegendVisible(false);
-
-//		System.out.println("SampleController - Time elapsed: " + (timeElapsed / (numRuns * 1e9)) + " seconds");
-//		System.out.println("SampleController - Equivalent refresh rate: " + (numRuns * 1e9 / timeElapsed) + " Hz");
-
 	}
 
 	private static void runScan_ScopeMode() {
