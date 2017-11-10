@@ -307,8 +307,12 @@ public class DPScope extends Observable {
 		isReady = false;
 		this.deleteObservers();
 		actionQueue.clear();
-		pool.shutdown();
-		hidDev.close();
+		if (pool != null) {
+			pool.shutdown();
+		}
+		if (hidDev != null) {
+			hidDev.close();
+		}
 	}
 
 	// CMD_PING (2) - get device name

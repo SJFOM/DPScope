@@ -1,6 +1,5 @@
 package com.dpscope.controller;
 
-import java.io.IOException;
 import java.net.URL;
 import java.util.LinkedHashMap;
 import java.util.Observable;
@@ -9,15 +8,12 @@ import java.util.ResourceBundle;
 
 import com.dpscope.DPScope;
 import com.dpscope.DPScope.Command;
-import com.dpscope.controller.root.RootController;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.Parent;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
@@ -107,37 +103,17 @@ public class MainController implements Initializable {
 		}
 	}
 	
-	@FXML 
-	RootController tabRootController;
-
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		// TODO Auto-generated method stub
 		System.out.println("Application started!");
-		
-//		FXMLLoader loader = new FXMLLoader(getClass().getResource("../view/root/RootLayout.fxml"));
-//		try {
-//			Parent root = loader.load();
-//		} catch (IOException e1) {
-//			// TODO Auto-generated catch block
-//			e1.printStackTrace();
-//		}
-//		RootController tabRootController = loader.getController();
-//		
-//		try {
-//			tabRootController.init(this);
-//		} catch (Exception e) {
-//			// TODO: handle exception
-//			System.out.println("tabRootController is null");
-//		}
-		
 		
 		ScopeChart.setAnimated(false);
 		ScopeChart.setLegendVisible(false);
 
 	}
 	
-	public static void setupScope() {
+	protected static void setupScope() {
 		myScope = new DPScope();
 		if (myScope.isDevicePresent()) {
 			myScope.connect();
@@ -171,10 +147,11 @@ public class MainController implements Initializable {
 			});
 		} else {
 			System.out.println("SampleController - No device present");
+			myScope = null;
 		}
 	}
 	
-	public static void disconnectScope() {
+	protected static void disconnectScope() {
 		if (myScope != null) {
 			myScope.disconnect();		
 			myScope.deleteObservers();

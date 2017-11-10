@@ -1,6 +1,4 @@
-package com.dpscope.controller.root;
-
-import com.dpscope.controller.MainController;
+package com.dpscope.controller;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
