@@ -64,37 +64,30 @@ public class MainController implements Initializable {
 	@FXML
 	private LineChart<Number, Number> ScopeChart;
 
-	protected static boolean readBackDone = false;
+	protected volatile static boolean taskReadScope = false;
+
+	protected volatile static boolean readBackDone = false;
 
 	@FXML
 	void fillChart(ActionEvent event) {
-		// Graph Series
-		try {
-			if (myScope != null) {
-				for (int i = 0; i < 1; i++) {
-					runScan_ScopeMode();
-
-					Thread.sleep(10);
-
-					while (readBackDone == false)
-						;
-//					Thread.sleep(200);
-					readBackDone = false;
-					XYChart.Series series = new XYChart.Series(data);
-					ScopeChart.getData().add(series);
-				}
-
+		if (myScope != null) {
+			if (start_stop.getText().equals("Start")) {
+				start_stop.setText("Stop");
+				taskReadScope = true;
+				scopeTask.start();
 			} else {
-				// fill with random data
-				for (int i = 0; i < 1000; i++)
-					data.add(new XYChart.Data<>(Math.random(), Math.random()));
-				System.out.println("No scope connected");
-				XYChart.Series series = new XYChart.Series(data);
-				ScopeChart.getData().add(series);
+				taskReadScope = false;
+				scopeTask.interrupt();
+				start_stop.setText("Start");
+
 			}
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		} else {
+			// fill with random data
+			for (int i = 0; i < 1000; i++)
+				data.add(new XYChart.Data<>(Math.random(), Math.random()));
+			System.out.println("No scope connected");
+			XYChart.Series series = new XYChart.Series(data);
+			ScopeChart.getData().add(series);
 		}
 	}
 
@@ -123,7 +116,7 @@ public class MainController implements Initializable {
 
 	}
 	
-	protected static void setupScope() {
+	public static void setupScope() {
 		myScope = new DPScope();
 		if (myScope.isDevicePresent()) {
 			myScope.connect();
@@ -162,15 +155,18 @@ public class MainController implements Initializable {
 		}
 	}
 	
-	protected static void disconnectScope() {
+	public static boolean disconnectScope() {
 		if (myScope != null) {
 			myScope.disconnect();		
 			myScope.deleteObservers();
 			myScope = null;
+			return true;
 		}
+		return false;
 	}
 
 	private static void runScan_ScopeMode() {
+		// TODO: tweak timings to optimize speed
 		try {
 			myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
 
@@ -200,4 +196,21 @@ public class MainController implements Initializable {
 			e.printStackTrace();
 		}
 	}
+	
+	Thread scopeTask = new Thread() {
+		public void run() {
+			if (taskReadScope) {
+				ScopeChart.getData().clear();
+				data.clear();
+				runScan_ScopeMode();
+
+				while (readBackDone == false)
+					;
+				readBackDone = false;
+
+				XYChart.Series series = new XYChart.Series(data);
+				ScopeChart.getData().add(series);
+			}
+		}
+	};
 }

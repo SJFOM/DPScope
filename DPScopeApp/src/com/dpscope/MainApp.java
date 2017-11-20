@@ -2,6 +2,8 @@ package com.dpscope;
 
 import java.io.IOException;
 
+import com.dpscope.controller.MainController;
+
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -81,6 +83,14 @@ public class MainApp extends Application {
         return primaryStage;
     }
 
+    @Override
+	public void stop() {
+		System.out.println("Stage is closing");
+		if (MainController.disconnectScope()) {
+			System.out.println("Disconnecting scope...");
+		}
+	}
+    
     public static void main(String[] args) {
         launch(args);
     }

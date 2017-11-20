@@ -267,7 +267,7 @@ public class DPScope extends Observable {
 							System.out.printf("Pin 4: %d\n", (twosCompConvert & 0x10) >> 4);
 							System.out.printf("Pin 3: %d\n", (twosCompConvert & 0x20) >> 5);
 							System.out.printf("Pin 2: %d\n", (twosCompConvert & 0x40) >> 6);
-							System.out.printf("Pin 1: %d\n", (twosCompConvert & 0x80 >> 7));
+							System.out.printf("Pin 1: %d\n", (twosCompConvert & 0x80) >> 7);
 							// isReady = true;
 							break;
 						case CMD_ARM_LA:
