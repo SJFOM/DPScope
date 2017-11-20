@@ -64,28 +64,38 @@ public class MainController implements Initializable {
 	@FXML
 	private LineChart<Number, Number> ScopeChart;
 
+	protected static boolean readBackDone = false;
+
 	@FXML
 	void fillChart(ActionEvent event) {
 		// Graph Series
+		try {
+			if (myScope != null) {
+				for (int i = 0; i < 1; i++) {
+					runScan_ScopeMode();
 
-		if (myScope != null) {
-			runScan_ScopeMode();
-			try {
-				Thread.sleep(200);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+					Thread.sleep(10);
+
+					while (readBackDone == false)
+						;
+//					Thread.sleep(200);
+					readBackDone = false;
+					XYChart.Series series = new XYChart.Series(data);
+					ScopeChart.getData().add(series);
+				}
+
+			} else {
+				// fill with random data
+				for (int i = 0; i < 1000; i++)
+					data.add(new XYChart.Data<>(Math.random(), Math.random()));
+				System.out.println("No scope connected");
+				XYChart.Series series = new XYChart.Series(data);
+				ScopeChart.getData().add(series);
 			}
-
-		} else {
-			// fill with random data
-			for (int i = 0; i < 1000; i++)
-				data.add(new XYChart.Data<>(Math.random(), Math.random()));
-			System.out.println("No scope connected");
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-
-		XYChart.Series series = new XYChart.Series(data);
-		ScopeChart.getData().add(series);
 	}
 
 	@FXML
@@ -135,8 +145,9 @@ public class MainController implements Initializable {
 							// System.out.println(myScope.scopeBuffer[i]);
 							data.add(new XYChart.Data<>(j++, myScope.scopeBuffer[i]));
 						}
-						timeElapsed = System.nanoTime() - timeCapture;
-						System.out.println("SampleController - CMD_READBACK - all blocks read");
+						readBackDone = true;
+//						timeElapsed = System.nanoTime() - timeCapture;
+//						System.out.println("SampleController - CMD_READBACK - all blocks read");
 					} else if (parsedMap.containsKey(Command.CMD_DONE)) {
 						isDone = true;
 					} else if (parsedMap.containsKey(Command.CMD_ARM)) {
