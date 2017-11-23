@@ -9,6 +9,7 @@ import java.util.ResourceBundle;
 import com.dpscope.DPScope;
 import com.dpscope.DPScope.Command;
 
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -70,25 +71,8 @@ public class MainController implements Initializable {
 
 	@FXML
 	void fillChart(ActionEvent event) {
-		if (myScope != null) {
-			if (start_stop.getText().equals("Start")) {
-				start_stop.setText("Stop");
-				taskReadScope = true;
-				scopeTask.start();
-			} else {
-				taskReadScope = false;
-				scopeTask.interrupt();
-				start_stop.setText("Start");
-
-			}
-		} else {
-			// fill with random data
-			for (int i = 0; i < 1000; i++)
-				data.add(new XYChart.Data<>(Math.random(), Math.random()));
-			System.out.println("No scope connected");
-			XYChart.Series series = new XYChart.Series(data);
-			ScopeChart.getData().add(series);
-		}
+		scopeTask.start(); 
+//		scopeTask.interrupt();
 	}
 
 	@FXML
@@ -199,18 +183,52 @@ public class MainController implements Initializable {
 	
 	Thread scopeTask = new Thread() {
 		public void run() {
-			if (taskReadScope) {
-				ScopeChart.getData().clear();
-				data.clear();
-				runScan_ScopeMode();
+			Platform.runLater(new Runnable() {
+				public void run() {
+					if (myScope != null) {
+						if (start_stop.getText().equals("Start")) {
+							start_stop.setText("Stop");
+							taskReadScope = true;
+							// scopeTask.start();
 
-				while (readBackDone == false)
-					;
-				readBackDone = false;
+							if (taskReadScope) {
+								ScopeChart.getData().clear();
+								data.clear();
+								runScan_ScopeMode();
 
-				XYChart.Series series = new XYChart.Series(data);
-				ScopeChart.getData().add(series);
-			}
+								while (readBackDone == false)
+									;
+								readBackDone = false;
+
+								XYChart.Series series = new XYChart.Series(data);
+								ScopeChart.getData().add(series);
+							}
+
+						} else {
+							taskReadScope = false;
+							// scopeTask.interrupt();
+							start_stop.setText("Start");
+						}
+					} else {
+						// fill with random data
+						if (true) {
+//							ScopeChart.getData().clear();
+//							data.clear();
+							for (int i = 0; i < 100; i++)
+								data.add(new XYChart.Data<>(Math.random(), Math.random()));
+							System.out.println("No scope connected");
+							XYChart.Series series = new XYChart.Series(data);
+							ScopeChart.getData().add(series);
+							try {
+								Thread.sleep(2000);
+							} catch (InterruptedException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+					}
+				}
+			});
 		}
 	};
 }
