@@ -5,13 +5,12 @@ import java.util.LinkedHashMap;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.dpscope.DPScope;
 import com.dpscope.DPScope.Command;
 
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -36,7 +35,10 @@ public class MainController implements Initializable {
 	private static long timeCapture = 0l;
 	private static long timeElapsed = 0l;
 
-	private static ObservableList<XYChart.Data<Number, Number>> data = FXCollections.<XYChart.Data<Number, Number>>observableArrayList();
+	// private static ObservableList<XYChart.Data<Number, Number>> data =
+	// FXCollections.<XYChart.Data<Number, Number>>observableArrayList();
+	private static ConcurrentLinkedQueue<Number> data = new ConcurrentLinkedQueue<>();
+	private static XYChart.Series<Number, Number> series = new XYChart.Series<>();
 
 	@FXML
 	private Button start_stop;
@@ -71,13 +73,66 @@ public class MainController implements Initializable {
 
 	@FXML
 	void fillChart(ActionEvent event) {
-		scopeTask.start(); 
-//		scopeTask.interrupt();
+		// scopeTask.start();
+		// scopeTask.interrupt();
+
+		if (myScope != null) {
+			if (start_stop.getText().equals("Start")) {
+				start_stop.setText("Stop");
+				taskReadScope = true;
+				// scopeTask.start();
+
+				if (taskReadScope) {
+					series.getData().clear();
+					data.clear();
+					runScan_ScopeMode();
+
+					while (readBackDone == false)
+						;
+					readBackDone = false;
+					int j = 0;
+					for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i += 2) {
+						// System.out.println(i + " - " +
+						// myScope.scopeBuffer[i]);
+						// System.out.println(myScope.scopeBuffer[i]);
+						series.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i]));
+						// data.add(scopeBuffer[i]);
+					}
+
+					try {
+						Thread.sleep(200);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+
+			} else {
+				taskReadScope = false;
+				// scopeTask.interrupt();
+				start_stop.setText("Start");
+			}
+		} else {
+			// fill with random data
+			if (true) {
+				// ScopeChart.getData().clear();
+				// data.clear();
+				for (int i = 0; i < 1000; i++)
+					series.getData().add(new XYChart.Data<>(i, Math.random()));
+				System.out.println("No scope connected");
+				// try {
+				// Thread.sleep(2000);
+				// } catch (InterruptedException e) {
+				// // TODO Auto-generated catch block
+				// e.printStackTrace();
+				// }
+			}
+		}
 	}
 
 	@FXML
 	void clearChart(ActionEvent event) {
-		ScopeChart.getData().clear();
+		series.getData().clear();
 		data.clear();
 	}
 
@@ -89,17 +144,32 @@ public class MainController implements Initializable {
 			ScopeChart.setAnimated(false);
 		}
 	}
-	
+
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		// TODO Auto-generated method stub
 		System.out.println("Application started!");
-		
-		ScopeChart.setAnimated(false);
+
+		x_axis.setForceZeroInRange(false);
+		x_axis.setAutoRanging(false);
+		x_axis.setTickLabelsVisible(false);
+		x_axis.setTickMarkVisible(false);
+		x_axis.setMinorTickVisible(false);
+
 		ScopeChart.setLegendVisible(false);
 
+		ScopeChart.setAnimated(false);
+		ScopeChart.setTitle("Animated Line Chart");
+		ScopeChart.setHorizontalGridLinesVisible(true);
+
+		// Set Name for Series
+		series.setName("Series 1");
+
+		// Add Chart Series
+		ScopeChart.getData().add(series);
+
 	}
-	
+
 	public static void setupScope() {
 		myScope = new DPScope();
 		if (myScope.isDevicePresent()) {
@@ -120,11 +190,12 @@ public class MainController implements Initializable {
 							// System.out.println(i + " - " +
 							// myScope.scopeBuffer[i]);
 							// System.out.println(myScope.scopeBuffer[i]);
-							data.add(new XYChart.Data<>(j++, myScope.scopeBuffer[i]));
+							// series.getData().add(new XYChart.Data<>(j++, scopeBuffer[i]));
+							// data.add(scopeBuffer[i]);
 						}
 						readBackDone = true;
-//						timeElapsed = System.nanoTime() - timeCapture;
-//						System.out.println("SampleController - CMD_READBACK - all blocks read");
+						// timeElapsed = System.nanoTime() - timeCapture;
+						// System.out.println("SampleController - CMD_READBACK - all blocks read");
 					} else if (parsedMap.containsKey(Command.CMD_DONE)) {
 						isDone = true;
 					} else if (parsedMap.containsKey(Command.CMD_ARM)) {
@@ -138,10 +209,10 @@ public class MainController implements Initializable {
 			myScope = null;
 		}
 	}
-	
+
 	public static boolean disconnectScope() {
 		if (myScope != null) {
-			myScope.disconnect();		
+			myScope.disconnect();
 			myScope.deleteObservers();
 			myScope = null;
 			return true;
@@ -180,7 +251,7 @@ public class MainController implements Initializable {
 			e.printStackTrace();
 		}
 	}
-	
+
 	Thread scopeTask = new Thread() {
 		public void run() {
 			Platform.runLater(new Runnable() {
@@ -200,8 +271,8 @@ public class MainController implements Initializable {
 									;
 								readBackDone = false;
 
-								XYChart.Series series = new XYChart.Series(data);
-								ScopeChart.getData().add(series);
+								// XYChart.Series series = new XYChart.Series(data);
+								// ScopeChart.getData().add(series);
 							}
 
 						} else {
@@ -212,13 +283,13 @@ public class MainController implements Initializable {
 					} else {
 						// fill with random data
 						if (true) {
-//							ScopeChart.getData().clear();
-//							data.clear();
+							// ScopeChart.getData().clear();
+							// data.clear();
 							for (int i = 0; i < 100; i++)
-								data.add(new XYChart.Data<>(Math.random(), Math.random()));
+								series.getData().add(new XYChart.Data<>(i, Math.random()));
 							System.out.println("No scope connected");
-							XYChart.Series series = new XYChart.Series(data);
-							ScopeChart.getData().add(series);
+							// XYChart.Series series = new XYChart.Series(data);
+							// ScopeChart.getData().add(series);
 							try {
 								Thread.sleep(2000);
 							} catch (InterruptedException e) {
