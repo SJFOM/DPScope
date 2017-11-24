@@ -73,6 +73,7 @@ public class AnimatedLineChart extends Application {
             @Override
             public Thread newThread(Runnable r) {
                 Thread thread = new Thread(r);
+                // ensures thread is shutdown when application exits
                 thread.setDaemon(true);
                 return thread;
             }
