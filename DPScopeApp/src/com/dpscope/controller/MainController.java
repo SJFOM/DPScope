@@ -92,11 +92,7 @@ public class MainController implements Initializable {
 					readBackDone = false;
 					int j = 0;
 					for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i += 2) {
-						// System.out.println(i + " - " +
-						// myScope.scopeBuffer[i]);
-						// System.out.println(myScope.scopeBuffer[i]);
 						series.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i]));
-						// data.add(scopeBuffer[i]);
 					}
 
 					try {

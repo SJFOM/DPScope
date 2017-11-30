@@ -52,7 +52,7 @@
                            <content>
                               <Pane prefHeight="200.0" prefWidth="200.0">
                                  <children>
-                                    <CheckBox fx:id="toggleAnimation" layoutX="29.0" layoutY="14.0" mnemonicParsing="false" onAction="#setChartAnimation" prefHeight="26.0" prefWidth="90.0" text="Animation" />
+                                    <CheckBox fx:id="toggleAnimation" layoutX="38.0" layoutY="18.0" mnemonicParsing="false" onAction="#setChartAnimation" prefHeight="26.0" prefWidth="90.0" text="Animation" />
                                  </children>
                               </Pane>
                            </content>
