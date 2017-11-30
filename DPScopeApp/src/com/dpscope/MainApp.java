@@ -3,6 +3,7 @@ package com.dpscope;
 import java.io.IOException;
 
 import com.dpscope.controller.MainController;
+import com.jfoenix.controls.JFXButton;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -42,13 +43,6 @@ public class MainApp extends Application {
 			scene.getStylesheets().add(getClass().getResource("stylesheet.css").toExternalForm());
 						
 			
-			
-//			JFXButton jfoenixButton = new JFXButton("JFoenix Button");
-//			JFXButton button = new JFXButton("Raised Button".toUpperCase());
-//			button.getStyleClass().add("button-raised");
-//			
-//			rootLayout.getChildren().add(button);
-			
 			primaryStage.setScene(scene);
 			primaryStage.show();
 		} catch (IOException e) {
@@ -69,6 +63,13 @@ public class MainApp extends Application {
             
             // Set person overview into the center of root layout.
             rootLayout.setCenter(dpscopeOverview);
+            
+            
+//            JFXButton jfoenixButton = new JFXButton("JFoenix Button");
+			JFXButton button = new JFXButton("Raised Button".toUpperCase());
+//			button.getStyleClass().add("button-raised");
+//			
+//			dpscopeOverview.getChildren().add(button);
             
         } catch (IOException e) {
             e.printStackTrace();
