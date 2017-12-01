@@ -28,10 +28,13 @@ public class DPScope extends Observable {
 	public final static byte CH2_10 = (byte) 9;
 	public final static byte CH_BATTERY = (byte) 15;
 
-	public final static int ALL_BLOCKS = 7;
+	public final static float NOMINAL_SUPPLY = 5.0f;
 	
+	public final static int ALL_BLOCKS = 7;
+
 	// First 422 (of 448) bytes are valid in readBack - rest is junk
 	public final static int MAX_READABLE_SIZE = 422;
+	public final static int MAX_DATA_PER_CHANNEL = 211;
 
 	/*
 	 * ADC acquisition parameters - from MainModule.bas
@@ -82,9 +85,9 @@ public class DPScope extends Observable {
 	public long currTime = 0;
 
 	public int callCount = 0;
-	
-	 private byte ch1 = 0;
-	 private byte ch2 = 0;
+
+	private byte ch1 = 0;
+	private byte ch2 = 0;
 
 	public static enum Command {
 		CMD_IDLE,
@@ -105,7 +108,8 @@ public class DPScope extends Observable {
 		CMD_INIT,
 		CMD_SERIAL_INIT,
 		CMD_SERIAL_TX,
-		CMD_CHECK_USB_SUPPLY;
+		CMD_CHECK_USB_SUPPLY,
+		EVT_DEVICE_REMOVED;
 	}
 
 	private HashMap<Command, float[]> mapOfArguments = new LinkedHashMap<Command, float[]>();
@@ -144,23 +148,6 @@ public class DPScope extends Observable {
 			deviceOpen = true;
 			isReady = true;
 			pool = Executors.newSingleThreadExecutor();
-			// this.addObserver(new Observer() {
-			//
-			// @Override
-			// public void update(Observable o, Object arg) {
-			// // TODO Auto-generated method stub
-			// // actionQueue.remove();
-			// if (run_RollMode) {
-			// readADC(ch1, ch2);
-			// }
-			// // System.out.println("List size: " + actionQueue.size());
-			// // System.out.format("%f\n", (double) (System.nanoTime() - currTime) /
-			// // 1_000_000_000.0);
-			// // currTime = System.nanoTime();
-			// // callCount++;
-			// // System.out.println(callCount + " times");
-			// }
-			// });
 
 			try {
 				hidDev = PureJavaHidApi.openDevice(devInfo);
@@ -170,6 +157,9 @@ public class DPScope extends Observable {
 						System.out.println("device removed");
 						deviceOpen = false;
 						isReady = false;
+						mapOfArguments.put(Command.EVT_DEVICE_REMOVED, null);
+						setChanged();
+						notifyObservers(mapOfArguments);
 					}
 				});
 				hidDev.setInputReportListener(new InputReportListener() {
@@ -193,7 +183,7 @@ public class DPScope extends Observable {
 							// isReady = true;
 							break;
 						case CMD_ARM:
-//							System.out.println("Scope Armed...");
+							// System.out.println("Scope Armed...");
 							isReady = true;
 							mapOfArguments.put(Command.CMD_ARM, null);
 							setChanged();
@@ -220,13 +210,14 @@ public class DPScope extends Observable {
 							int buffOffset = ((int) txBuf[1]) * 64;
 							// TODO: Read back 38 bytes (instead of 64) if currBlock = 6
 							for (int idx = 0; idx < 64; idx++) {
-								scopeBuffer[idx + buffOffset] = (int) ((rxBuf[idx] & 0xFF) - 127);
+//								scopeBuffer[idx + buffOffset] = (int) ((rxBuf[idx] & 0xFF) - 127);
+								scopeBuffer[idx + buffOffset] = (int) ((rxBuf[idx] & 0xFF) - 128);
 							}
 
 							if (currBlock == 6) {
 								// all blocks read from
 								// System.out.println("CMD_READBACK - all blocks read");
-//								mapOfArguments.put(Command.CMD_READBACK, scopeBuffer);
+								// mapOfArguments.put(Command.CMD_READBACK, scopeBuffer);
 								mapOfArguments.put(Command.CMD_READBACK, null);
 								setChanged();
 								notifyObservers(mapOfArguments);
@@ -714,14 +705,8 @@ public class DPScope extends Observable {
 				isReady = true;
 				while (deviceOpen) {
 					if (isReady && (actionQueue.size() > 0)) {
-						// if ((isReady && (actionQueue.size() >= 1)) || (actionQueue.size() == 1)) {
 						isReady = false;
 						try {
-							// actionQueue.element().go();
-							// if (actionQueue.size() > 10) {
-							// actionQueue.remove();
-							// }
-							// actionQueue.element().go();
 							bootItem = actionQueue.poll();
 							if (bootItem != null) {
 								bootItem.go();
@@ -731,22 +716,14 @@ public class DPScope extends Observable {
 							}
 
 						} catch (Exception e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 
 					} else {
 						// Shouldn't enter here if pending tasks
 						// are updated faster than this timeout..
-						Thread.sleep(0);
-						// if (actionQueue.size() > 0) {
-						// actionQueue.remove();
-						// }
+						Thread.sleep(10);
 					}
-
-					// if (actionQueue.size() == 0) {
-					// return;
-					// }
 				}
 				// if scope not/no longer connected
 				actionQueue.clear();

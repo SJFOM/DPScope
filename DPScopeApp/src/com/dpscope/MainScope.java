@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 import com.dpscope.DPScope.Command;
+import com.jfoenix.controls.JFXButton;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
@@ -23,67 +24,80 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Control;
-import javafx.scene.control.Menu;
-import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
-import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
 public class MainScope extends Application {
 
-	// Scope controls
+	/*
+	 *  Scope controls
+	 */
 	private static DPScope myScope;
 	private static LinkedHashMap<Command, float[]> parsedMap;
+
 	private volatile static boolean readBackDone = false;
-	private static float[] lastData = new float[1];
 	private volatile static boolean isDone = false;
 	private volatile static boolean isArmed = false;
 	private volatile static boolean scopeRead = false;
 	private volatile static boolean nextScopeData = false;
+	
+	// offset found by measuring P & G pins at rear of scope
+	private static float vUsbOffset = -0.008f;
 
-	// Testing variables
+	/*
+	 *  Scope reading variables
+	 */
+	private static float[] lastData = new float[1];
+	private static float actualSupplyVoltage = 0.0f;
+	private static float supplyVoltageRatio = 0.0f;
+	private static float scaleFactorY = 0.0f;
+
+	/*
+	 *  Testing variables
+	 */
 	private static boolean nextTestData = false;
 
-	// Elapsed time testing
+	/*
+	 *  Elapsed time testing
+	 */
 	private static long timeCapture = 0l;
 	private static long timeElapsed = 0l;
 
-	// JavaFX layout controls
+	/*
+	 *  JavaFX layout controls
+	 */
 	private static final int MAX_DATA_POINTS = 500;
 	private int xSeriesData = 0;
 	private XYChart.Series<Number, Number> series1 = new XYChart.Series<>();
 	private ExecutorService executor;
 	private ConcurrentLinkedQueue<Number> dataQ1 = new ConcurrentLinkedQueue<>();
-	
-	// JavaFX elements
-	private static ImageView imgConnection = new ImageView();
-	private static Image imgRedButton = new Image("file:images/red_dot.png");
-	private static Image imgGreenButton = new Image("file:images/green_dot.png");
-	
 
 	private NumberAxis xAxis;
+	
+	/*
+	 * Main body of code
+	 */
 
 	private void init(Stage primaryStage) {
 
-		xAxis = new NumberAxis(0, MAX_DATA_POINTS, MAX_DATA_POINTS / 10);
+		xAxis = new NumberAxis(0, DPScope.MAX_DATA_PER_CHANNEL, DPScope.MAX_DATA_PER_CHANNEL / 10);
 		xAxis.setForceZeroInRange(false);
 		xAxis.setAutoRanging(false);
 		xAxis.setTickLabelsVisible(false);
 		xAxis.setTickMarkVisible(false);
 		xAxis.setMinorTickVisible(false);
 
-		xAxis.setLowerBound(0);
-		xAxis.setUpperBound(DPScope.MAX_READABLE_SIZE);
-		NumberAxis yAxis = new NumberAxis();
+		NumberAxis yAxis = new NumberAxis(-20, 20, 4);
+//		yAxis.setAutoRanging(true);
+//		yAxis.setUpperBound(20);
+//		yAxis.setLowerBound(0);
 
 		// Create a LineChart
 		final LineChart<Number, Number> lineChart = new LineChart<Number, Number>(xAxis, yAxis) {
@@ -95,6 +109,8 @@ public class MainScope extends Application {
 
 		lineChart.setAnimated(false);
 		lineChart.setLegendVisible(false);
+		lineChart.setVerticalGridLinesVisible(true);
+		lineChart.setHorizontalGridLinesVisible(true);
 		// lineChart.setTitle("Animated Line Chart");
 		lineChart.setHorizontalGridLinesVisible(true);
 
@@ -111,20 +127,19 @@ public class MainScope extends Application {
 		spltPane.getItems().addAll(tabPaneControls(), lineChart);
 
 		BorderPane bpaneRoot = new BorderPane();
-		MenuBar menuBarRoot = new MenuBar();
-		Menu menuScope = new Menu("Scope");
-		MenuItem menuItemConnect = new MenuItem("Connect".toUpperCase());
 
-		menuScope.setStyle("-fx-background-color: #f64863;");
-		
-		menuItemConnect.setOnAction(new EventHandler<ActionEvent>() {
+		JFXButton btnConnect = new JFXButton("Connect".toUpperCase());
+
+		btnConnect.setStyle("-fx-background-color: #f64863;");
+
+		btnConnect.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent e) {
 
-				if (menuItemConnect.getText().equals("Connect".toUpperCase())) {
+				if (btnConnect.getText().equals("Connect".toUpperCase())) {
 					myScope = new DPScope();
 					if (myScope.isDevicePresent()) {
-						menuItemConnect.setText("Disconnect".toUpperCase());
+						btnConnect.setText("Disconnect".toUpperCase());
 						myScope.connect();
 						myScope.addObserver(new Observer() {
 							@Override
@@ -134,52 +149,39 @@ public class MainScope extends Application {
 								if (parsedMap.containsKey(Command.CMD_READADC)) {
 									lastData[0] = parsedMap.get(Command.CMD_READADC)[0];
 								} else if (parsedMap.containsKey(Command.CMD_CHECK_USB_SUPPLY)) {
-									System.out.println("TestApp - USB supply: "
-											+ parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0] + " Volts");
+									actualSupplyVoltage = (float) (parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0] + vUsbOffset);
+									supplyVoltageRatio = actualSupplyVoltage / DPScope.NOMINAL_SUPPLY;
+									scaleFactorY = (float) (supplyVoltageRatio * 25 / 12 / 2.55);
+									System.out.println("USB supply voltage: " + actualSupplyVoltage + " Volts");
+									System.out.println("supplyVoltageRatio: " + supplyVoltageRatio);
+									System.out.println("scaleFactorY: " + scaleFactorY);
 								} else if (parsedMap.containsKey(Command.CMD_READBACK)) {
 									readBackDone = true;
 								} else if (parsedMap.containsKey(Command.CMD_DONE)) {
 									isDone = true;
 								} else if (parsedMap.containsKey(Command.CMD_ARM)) {
 									isArmed = true;
+								} else if (parsedMap.containsKey(Command.EVT_DEVICE_REMOVED)) {
+									disconnectScope();
 								}
 								parsedMap.clear();
 							}
 						});
-						imgConnection.setImage(imgGreenButton);
-						menuScope.setStyle("-fx-background-color: #f64863;");
+						btnConnect.setStyle("-fx-background-color: #99ffcc;");
+						myScope.checkUsbSupply();
 					} else {
 						System.out.println("SampleController - No device present");
 						myScope = null;
 					}
 				} else {
-					menuItemConnect.setText("Connect".toUpperCase());
-					if (myScope != null) {
-						myScope.disconnect();
-						myScope.deleteObservers();
-						myScope = null;
-					}
-					imgConnection.setImage(imgRedButton);
-					menuScope.setStyle("-fx-background-color: #f64263;");
+					btnConnect.setText("Connect".toUpperCase());
+					disconnectScope();
+					btnConnect.setStyle("-fx-background-color: #f64863;");
 				}
 			}
 		});
 
-		menuScope.getItems().add(menuItemConnect);
-
-		menuBarRoot.getMenus().add(menuScope);
-
-		HBox bxTop = new HBox();
-		bxTop.setSpacing(10);
-		
-		imgConnection.setImage(imgRedButton);
-		imgConnection.setFitWidth(15);
-		imgConnection.setPreserveRatio(true);
-		imgConnection.setCache(true);
-//		bxTop.getChildren().add(imgConnection);
-		bxTop.getChildren().addAll(menuBarRoot, imgConnection);
-		
-		bpaneRoot.setTop(bxTop);
+		bpaneRoot.setTop(btnConnect);
 		bpaneRoot.setCenter(spltPane);
 
 		primaryStage.setScene(new Scene(bpaneRoot));
@@ -205,11 +207,14 @@ public class MainScope extends Application {
 			}
 		});
 
-//		AddRandomDataToQueue addRandomDataToQueue = new AddRandomDataToQueue();
-//		executor.execute(addRandomDataToQueue);
+		// AddRandomDataToQueue addRandomDataToQueue = new AddRandomDataToQueue();
+		// executor.execute(addRandomDataToQueue);
 
-		 AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
-		 executor.execute(addTestDataToQueue);
+		// AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
+		// executor.execute(addTestDataToQueue);
+
+		AddScopeDataToQueue addScopeDataToQueue = new AddScopeDataToQueue();
+		executor.execute(addScopeDataToQueue);
 
 		// -- Prepare Timeline
 		prepareTimeline();
@@ -224,7 +229,9 @@ public class MainScope extends Application {
 
 					// must query scope if its ready for readback
 					while (!isArmed) {
-						Thread.sleep(10);
+						// TODO: Should be able to remove/reduce this timeout - test
+						// Thread.sleep(10);
+						Thread.sleep(0);
 						// gives enough time to re-check and for readBack
 						// System.out.println("TestApp - not armed - wait...");
 					}
@@ -232,9 +239,10 @@ public class MainScope extends Application {
 					// System.out.println("TestApp - Scope Armed");
 					myScope.queryIfDone();
 					while (!isDone) {
-						Thread.sleep(5);
+						// TODO: Should be able to remove/reduce this timeout - test
+						// Thread.sleep(5);
+						Thread.sleep(0);
 						// gives enough time to re-check and for readBack
-						// System.out.println("TestApp - not ready - wait...");
 					}
 					isDone = false;
 
@@ -327,8 +335,11 @@ public class MainScope extends Application {
 			@Override
 			public void handle(long now) {
 				// timeCapture = System.nanoTime();
+
 				// addRandomDataToSeries();
-				addTestDataToSeries();
+				// addTestDataToSeries();
+				addScopeDataToSeries();
+
 				// timeElapsed = (long) (1.0e6/(System.nanoTime() -
 				// timeCapture));
 			}
@@ -360,12 +371,10 @@ public class MainScope extends Application {
 					if (myScope != null) {
 						nextScopeData = true;
 					}
-					imgConnection.setImage(imgGreenButton); // testing
 				} else {
 					btnStart.setText("Start".toUpperCase());
 					scopeRead = false;
 					nextScopeData = true;
-					imgConnection.setImage(imgRedButton); // testing
 				}
 			}
 		});
@@ -439,6 +448,26 @@ public class MainScope extends Application {
 
 		return tbpControls;
 
+	}
+
+	private boolean disconnectScope() {
+		if (myScope != null) {
+			myScope.disconnect();
+			myScope.deleteObservers();
+			myScope = null;
+			scopeRead = false;
+			nextScopeData = false;
+			return true;
+		}
+		return false;
+	}
+
+	@Override
+	public void stop() {
+		System.out.println("App is closing");
+		if (disconnectScope()) {
+			System.out.println("Disconnecting scope...");
+		}
 	}
 
 	public static void main(String[] args) {
