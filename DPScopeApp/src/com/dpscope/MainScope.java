@@ -30,23 +30,32 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
 public class MainScope extends Application {
 
 	// Scope controls
 	private static DPScope myScope;
-	private static RunScanScopeMode scopeMode;
 	private static LinkedHashMap<Command, float[]> parsedMap;
-	protected volatile static boolean taskReadScope = false;
-	protected volatile static boolean readBackDone = false;
+	private volatile static boolean readBackDone = false;
 	private static float[] lastData = new float[1];
-	private static boolean isDone = false;
-	private static boolean isArmed = false;
-	private static boolean scopeRead = false;
+	private volatile static boolean isDone = false;
+	private volatile static boolean isArmed = false;
+	private volatile static boolean scopeRead = false;
+	private volatile static boolean nextScopeData = false;
+
+	// Testing variables
+	private static boolean nextTestData = false;
+
+	// Elapsed time testing
+	private static long timeCapture = 0l;
+	private static long timeElapsed = 0l;
 
 	// JavaFX layout controls
 	private static final int MAX_DATA_POINTS = 500;
@@ -54,6 +63,12 @@ public class MainScope extends Application {
 	private XYChart.Series<Number, Number> series1 = new XYChart.Series<>();
 	private ExecutorService executor;
 	private ConcurrentLinkedQueue<Number> dataQ1 = new ConcurrentLinkedQueue<>();
+	
+	// JavaFX elements
+	private static ImageView imgConnection = new ImageView();
+	private static Image imgRedButton = new Image("file:images/red_dot.png");
+	private static Image imgGreenButton = new Image("file:images/green_dot.png");
+	
 
 	private NumberAxis xAxis;
 
@@ -66,6 +81,8 @@ public class MainScope extends Application {
 		xAxis.setTickMarkVisible(false);
 		xAxis.setMinorTickVisible(false);
 
+		xAxis.setLowerBound(0);
+		xAxis.setUpperBound(DPScope.MAX_READABLE_SIZE);
 		NumberAxis yAxis = new NumberAxis();
 
 		// Create a LineChart
@@ -98,6 +115,8 @@ public class MainScope extends Application {
 		Menu menuScope = new Menu("Scope");
 		MenuItem menuItemConnect = new MenuItem("Connect".toUpperCase());
 
+		menuScope.setStyle("-fx-background-color: #f64863;");
+		
 		menuItemConnect.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent e) {
@@ -127,6 +146,8 @@ public class MainScope extends Application {
 								parsedMap.clear();
 							}
 						});
+						imgConnection.setImage(imgGreenButton);
+						menuScope.setStyle("-fx-background-color: #f64863;");
 					} else {
 						System.out.println("SampleController - No device present");
 						myScope = null;
@@ -138,6 +159,8 @@ public class MainScope extends Application {
 						myScope.deleteObservers();
 						myScope = null;
 					}
+					imgConnection.setImage(imgRedButton);
+					menuScope.setStyle("-fx-background-color: #f64263;");
 				}
 			}
 		});
@@ -146,7 +169,17 @@ public class MainScope extends Application {
 
 		menuBarRoot.getMenus().add(menuScope);
 
-		bpaneRoot.setTop(menuBarRoot);
+		HBox bxTop = new HBox();
+		bxTop.setSpacing(10);
+		
+		imgConnection.setImage(imgRedButton);
+		imgConnection.setFitWidth(15);
+		imgConnection.setPreserveRatio(true);
+		imgConnection.setCache(true);
+//		bxTop.getChildren().add(imgConnection);
+		bxTop.getChildren().addAll(menuBarRoot, imgConnection);
+		
+		bpaneRoot.setTop(bxTop);
 		bpaneRoot.setCenter(spltPane);
 
 		primaryStage.setScene(new Scene(bpaneRoot));
@@ -155,6 +188,10 @@ public class MainScope extends Application {
 	@Override
 	public void start(Stage stage) {
 		stage.setTitle("DPScope");
+		stage.setMinWidth(700);
+		stage.setMinHeight(400);
+		stage.setWidth(800);
+		stage.setHeight(500);
 		init(stage);
 		stage.show();
 
@@ -168,18 +205,59 @@ public class MainScope extends Application {
 			}
 		});
 
-		scopeMode = new RunScanScopeMode();
-		 AddToQueue addToQueue = new AddToQueue();
-		 executor.execute(addToQueue);
+//		AddRandomDataToQueue addRandomDataToQueue = new AddRandomDataToQueue();
+//		executor.execute(addRandomDataToQueue);
+
+		 AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
+		 executor.execute(addTestDataToQueue);
+
 		// -- Prepare Timeline
 		prepareTimeline();
 	}
 
-	private class AddToQueue implements Runnable {
+	private class AddScopeDataToQueue implements Runnable {
+		public void run() {
+			try {
+				if (nextScopeData) {
+					nextScopeData = false;
+					myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
+
+					// must query scope if its ready for readback
+					while (!isArmed) {
+						Thread.sleep(10);
+						// gives enough time to re-check and for readBack
+						// System.out.println("TestApp - not armed - wait...");
+					}
+					isArmed = false;
+					// System.out.println("TestApp - Scope Armed");
+					myScope.queryIfDone();
+					while (!isDone) {
+						Thread.sleep(5);
+						// gives enough time to re-check and for readBack
+						// System.out.println("TestApp - not ready - wait...");
+					}
+					isDone = false;
+
+					// System.out.println("TestApp - Ready for read!");
+
+					for (int i = 0; i < DPScope.ALL_BLOCKS; i++) {
+						myScope.readBack(i);
+					}
+				}
+
+				executor.execute(this);
+			} catch (InterruptedException ex) {
+				ex.printStackTrace();
+			}
+		}
+	}
+
+	private class AddRandomDataToQueue implements Runnable {
 		public void run() {
 			try {
 				// add a item of random data to queue
 				dataQ1.add(Math.random());
+				// dataQ1.add(timeElapsed);
 
 				Thread.sleep(10);
 				executor.execute(this);
@@ -189,18 +267,43 @@ public class MainScope extends Application {
 		}
 	}
 
-	// -- Timeline gets called in the JavaFX Main thread
-	private void prepareTimeline() {
-		// Every frame to take any data from queue and add to chart
-		new AnimationTimer() {
-			@Override
-			public void handle(long now) {
-				addDataToSeries();
+	private class AddTestDataToQueue implements Runnable {
+		public void run() {
+			try {
+				Thread.sleep(10);
+				nextTestData = true;
+				executor.execute(this);
+			} catch (InterruptedException ex) {
+				ex.printStackTrace();
 			}
-		}.start();
+		}
 	}
 
-	private void addDataToSeries() {
+	private void addScopeDataToSeries() {
+		if (scopeRead && readBackDone) {
+			readBackDone = false;
+			series1.getData().clear();
+
+			int j = 0;
+			for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i += 2) {
+				series1.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i]));
+			}
+			nextScopeData = true;
+		}
+	}
+
+	private void addTestDataToSeries() {
+		if (scopeRead && nextTestData) {
+			series1.getData().clear();
+			nextTestData = false;
+			for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i++) {
+				series1.getData().add(new XYChart.Data<>(i, Math.random()));
+			}
+			nextTestData = true;
+		}
+	}
+
+	private void addRandomDataToSeries() {
 		if (scopeRead) {
 			for (int i = 0; i < 20; i++) { // -- add 20 numbers to the plot+
 				if (dataQ1.isEmpty())
@@ -217,38 +320,19 @@ public class MainScope extends Application {
 		}
 	}
 
-	private class RunScanScopeMode implements Runnable {
-		public void run() {
-			try {
-				myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
-
-				// must query scope if its ready for readback
-				while (!isArmed) {
-					Thread.sleep(10);
-					// gives enough time to re-check and for readBack
-					// System.out.println("TestApp - not armed - wait...");
-				}
-				isArmed = false;
-				// System.out.println("TestApp - Scope Armed");
-				myScope.queryIfDone();
-				while (!isDone) {
-					Thread.sleep(5);
-					// gives enough time to re-check and for readBack
-					// System.out.println("TestApp - not ready - wait...");
-				}
-				isDone = false;
-
-				// System.out.println("TestApp - Ready for read!");
-
-				for (int i = 0; i < DPScope.ALL_BLOCKS; i++) {
-					myScope.readBack(i);
-				}
-
-				// executor.execute(this);
-			} catch (InterruptedException ex) {
-				ex.printStackTrace();
+	// -- Timeline gets called in the JavaFX Main thread
+	private void prepareTimeline() {
+		// Every frame to take any data from queue and add to chart
+		new AnimationTimer() {
+			@Override
+			public void handle(long now) {
+				// timeCapture = System.nanoTime();
+				// addRandomDataToSeries();
+				addTestDataToSeries();
+				// timeElapsed = (long) (1.0e6/(System.nanoTime() -
+				// timeCapture));
 			}
-		}
+		}.start();
 	}
 
 	private TabPane tabPaneControls() {
@@ -272,13 +356,16 @@ public class MainScope extends Application {
 			public void handle(ActionEvent e) {
 				if (btnStart.getText().equals("Start".toUpperCase())) {
 					btnStart.setText("Stop".toUpperCase());
-					if (myScope != null) {
-						executor.execute(scopeMode);
-					}
 					scopeRead = true;
+					if (myScope != null) {
+						nextScopeData = true;
+					}
+					imgConnection.setImage(imgGreenButton); // testing
 				} else {
 					btnStart.setText("Start".toUpperCase());
 					scopeRead = false;
+					nextScopeData = true;
+					imgConnection.setImage(imgRedButton); // testing
 				}
 			}
 		});
@@ -286,8 +373,12 @@ public class MainScope extends Application {
 		btnClear.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent e) {
-				series1.getData().clear();
-				dataQ1.clear();
+				if (!series1.getData().isEmpty()) {
+					series1.getData().clear();
+				}
+				if (!dataQ1.isEmpty()) {
+					dataQ1.clear();
+				}
 			}
 		});
 

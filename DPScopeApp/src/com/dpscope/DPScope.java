@@ -226,7 +226,8 @@ public class DPScope extends Observable {
 							if (currBlock == 6) {
 								// all blocks read from
 								// System.out.println("CMD_READBACK - all blocks read");
-								mapOfArguments.put(Command.CMD_READBACK, scopeBuffer);
+//								mapOfArguments.put(Command.CMD_READBACK, scopeBuffer);
+								mapOfArguments.put(Command.CMD_READBACK, null);
 								setChanged();
 								notifyObservers(mapOfArguments);
 							}
