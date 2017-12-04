@@ -30,6 +30,14 @@ public class DPScope extends Observable {
 
 	public final static float NOMINAL_SUPPLY = 5.0f;
 	
+	// Voltage divisions
+	public final static String DIV_TWO_V = "2 V/div";
+	public final static String DIV_ONE_V = "1 V/div";
+	public final static String DIV_FIVE_HUNDRED_MV = "500 mV/div";
+	public final static String DIV_TWENTY_MV = "20 mV/div";
+	public final static String DIV_TEN_MV = "10 mV/div";
+	public final static String DIV_FIVE_MV = "5 mV/div";
+	
 	public final static int ALL_BLOCKS = 7;
 
 	// First 422 (of 448) bytes are valid in readBack - rest is junk

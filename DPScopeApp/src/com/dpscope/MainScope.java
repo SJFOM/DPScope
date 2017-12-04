@@ -1,6 +1,5 @@
 package com.dpscope;
 
-import java.awt.BorderLayout;
 import java.util.LinkedHashMap;
 import java.util.Observable;
 import java.util.Observer;
@@ -17,6 +16,7 @@ import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
+import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -35,14 +35,14 @@ import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 
 public class MainScope extends Application {
 
 	/*
-	 *  Scope controls
+	 * Scope controls
 	 */
 	private static DPScope myScope;
 	private static LinkedHashMap<Command, float[]> parsedMap;
@@ -52,12 +52,12 @@ public class MainScope extends Application {
 	private volatile static boolean isArmed = false;
 	private volatile static boolean scopeRead = false;
 	private volatile static boolean nextScopeData = false;
-	
+
 	// offset found by measuring P & G pins at rear of scope
 	private static float vUsbOffset = -0.008f;
 
 	/*
-	 *  Scope reading variables
+	 * Scope reading variables
 	 */
 	private static float[] lastData = new float[1];
 	private static float actualSupplyVoltage = 0.0f;
@@ -65,18 +65,18 @@ public class MainScope extends Application {
 	private static float scaleFactorY = 0.0f;
 
 	/*
-	 *  Testing variables
+	 * Testing variables
 	 */
 	private static boolean nextTestData = false;
 
 	/*
-	 *  Elapsed time testing
+	 * Elapsed time testing
 	 */
 	private static long timeCapture = 0l;
 	private static long timeElapsed = 0l;
 
 	/*
-	 *  JavaFX layout controls
+	 * JavaFX layout controls
 	 */
 	private static final int MAX_DATA_POINTS = 500;
 	private int xSeriesData = 0;
@@ -85,7 +85,8 @@ public class MainScope extends Application {
 	private ConcurrentLinkedQueue<Number> dataQ1 = new ConcurrentLinkedQueue<>();
 
 	private NumberAxis xAxis;
-	
+	private NumberAxis yAxis;
+
 	/*
 	 * Main body of code
 	 */
@@ -99,10 +100,10 @@ public class MainScope extends Application {
 		xAxis.setTickMarkVisible(false);
 		xAxis.setMinorTickVisible(false);
 
-		NumberAxis yAxis = new NumberAxis(-20, 20, 4);
-//		yAxis.setAutoRanging(true);
-//		yAxis.setUpperBound(20);
-//		yAxis.setLowerBound(0);
+		yAxis = new NumberAxis(-20, 20, 4);
+		// yAxis.setAutoRanging(true);
+		// yAxis.setUpperBound(20);
+		// yAxis.setLowerBound(0);
 
 		// Create a LineChart
 		final LineChart<Number, Number> lineChart = new LineChart<Number, Number>(xAxis, yAxis) {
@@ -154,7 +155,8 @@ public class MainScope extends Application {
 								if (parsedMap.containsKey(Command.CMD_READADC)) {
 									lastData[0] = parsedMap.get(Command.CMD_READADC)[0];
 								} else if (parsedMap.containsKey(Command.CMD_CHECK_USB_SUPPLY)) {
-									actualSupplyVoltage = (float) (parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0] + vUsbOffset);
+									actualSupplyVoltage = (float) (parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0]
+											+ vUsbOffset);
 									supplyVoltageRatio = actualSupplyVoltage / DPScope.NOMINAL_SUPPLY;
 									scaleFactorY = (float) (supplyVoltageRatio * 25 / 12 / 2.55);
 									System.out.println("USB supply voltage: " + actualSupplyVoltage + " Volts");
@@ -215,11 +217,11 @@ public class MainScope extends Application {
 		// AddRandomDataToQueue addRandomDataToQueue = new AddRandomDataToQueue();
 		// executor.execute(addRandomDataToQueue);
 
-		 AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
-		 executor.execute(addTestDataToQueue);
+		AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
+		executor.execute(addTestDataToQueue);
 
-//		AddScopeDataToQueue addScopeDataToQueue = new AddScopeDataToQueue();
-//		executor.execute(addScopeDataToQueue);
+		// AddScopeDataToQueue addScopeDataToQueue = new AddScopeDataToQueue();
+		// executor.execute(addScopeDataToQueue);
 
 		// -- Prepare Timeline
 		prepareTimeline();
@@ -342,8 +344,8 @@ public class MainScope extends Application {
 				// timeCapture = System.nanoTime();
 
 				// addRandomDataToSeries();
-				 addTestDataToSeries();
-//				addScopeDataToSeries();
+				addTestDataToSeries();
+				// addScopeDataToSeries();
 
 				// timeElapsed = (long) (1.0e6/(System.nanoTime() -
 				// timeCapture));
@@ -396,29 +398,54 @@ public class MainScope extends Application {
 			}
 		});
 
-		HBox hboxTime = new HBox();
-		hboxTime.setPadding(new Insets(15, 12, 15, 12));
-		hboxTime.setSpacing(80);
-		hboxTime.prefWidthProperty().bind(paneTimeControls.widthProperty());
-
-		hboxTime.getChildren().addAll(btnStart, btnClear);
-
 		// Division scaling controls
 		ObservableList<String> listDivisionsText = FXCollections.observableArrayList(//
-	               "2 V/div", "1 V/div", "500 mV/div", "50 mV/div", //
-	               "20 mV/div", "5 mV/div");
-		
+				DPScope.DIV_TWO_V, DPScope.DIV_ONE_V, DPScope.DIV_FIVE_HUNDRED_MV, DPScope.DIV_TWENTY_MV,
+				DPScope.DIV_TEN_MV, DPScope.DIV_FIVE_MV);
+
 		SpinnerValueFactory<String> valueFactoryVoltageDiv = //
 				new SpinnerValueFactory.ListSpinnerValueFactory<String>(listDivisionsText);
 		valueFactoryVoltageDiv.setValue("2 V/div");
-		
+
 		final Spinner<String> spinVoltageScale = new Spinner<String>();
 		spinVoltageScale.setValueFactory(valueFactoryVoltageDiv);
 
+		spinVoltageScale.valueProperty().addListener((obs, oldValue, newValue) -> {
+			// System.out.println("New value: " + newValue);
+			switch (newValue) {
+			case DPScope.DIV_TWO_V:
+				yAxis.setUpperBound(20);
+				yAxis.setLowerBound(-20);
+				yAxis.setTickUnit(4);
+				break;
+			case DPScope.DIV_ONE_V:
+				yAxis.setUpperBound(10);
+				yAxis.setLowerBound(-10);
+				yAxis.setTickUnit(2);
+				break;
+			case DPScope.DIV_FIVE_HUNDRED_MV:
+				yAxis.setUpperBound(5);
+				yAxis.setLowerBound(-5);
+				yAxis.setTickUnit(1);
+				break;
+			default:
+				break;
+			}
+		});
+
 		BorderPane brdrVoltageControls = new BorderPane();
 		brdrVoltageControls.setCenter(spinVoltageScale);
-		
-		paneTimeControls.getChildren().addAll(hboxTime, brdrVoltageControls);
+		brdrVoltageControls.setStyle("-fx-border-color: red");
+
+		FlowPane flowPaneControls = new FlowPane();
+		flowPaneControls.setHgap(10);
+		flowPaneControls.setVgap(20);
+		flowPaneControls.setPadding(new Insets(15, 15, 15, 15));
+		flowPaneControls.setPrefWidth(200);
+		flowPaneControls.setMaxWidth(200);
+
+		flowPaneControls.getChildren().addAll(btnStart, btnClear, spinVoltageScale);
+		paneTimeControls.getChildren().add(flowPaneControls);
 
 		/*
 		 * FFT control panel
@@ -437,6 +464,7 @@ public class MainScope extends Application {
 		menuFiltering.getItems().add(new MenuItem("Hanning"));
 
 		BorderPane bpaneFFT = new BorderPane();
+		bpaneFFT.setPadding(new Insets(15, 15, 15, 15));
 		bpaneFFT.setTop(menuFiltering);
 		bpaneFFT.prefWidthProperty().bind(paneFFTControls.widthProperty());
 		bpaneFFT.prefHeightProperty().bind(paneFFTControls.heightProperty());
@@ -455,8 +483,7 @@ public class MainScope extends Application {
 		final CheckBox chkAnimation = new CheckBox("Animation");
 		chkAnimation.setText("Animation");
 		chkAnimation.setAlignment(Pos.CENTER);
-		chkAnimation.setLayoutX(50);
-		chkAnimation.setLayoutY(20);
+		chkAnimation.setPadding(new Insets(15, 15, 15, 15));
 
 		paneOptions.getChildren().add(chkAnimation);
 		// paneTimeControls.setStyle("-fx-background-color: #f64863;");
@@ -484,7 +511,7 @@ public class MainScope extends Application {
 
 	@Override
 	public void stop() {
-		System.out.println("App is closing");
+		// System.out.println("App is closing");
 		if (disconnectScope()) {
 			System.out.println("Disconnecting scope...");
 		}
