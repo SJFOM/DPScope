@@ -1,5 +1,6 @@
 package com.dpscope;
 
+import java.awt.BorderLayout;
 import java.util.LinkedHashMap;
 import java.util.Observable;
 import java.util.Observer;
@@ -13,6 +14,8 @@ import com.jfoenix.controls.JFXButton;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
@@ -26,6 +29,8 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.Control;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -210,11 +215,11 @@ public class MainScope extends Application {
 		// AddRandomDataToQueue addRandomDataToQueue = new AddRandomDataToQueue();
 		// executor.execute(addRandomDataToQueue);
 
-		// AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
-		// executor.execute(addTestDataToQueue);
+		 AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
+		 executor.execute(addTestDataToQueue);
 
-		AddScopeDataToQueue addScopeDataToQueue = new AddScopeDataToQueue();
-		executor.execute(addScopeDataToQueue);
+//		AddScopeDataToQueue addScopeDataToQueue = new AddScopeDataToQueue();
+//		executor.execute(addScopeDataToQueue);
 
 		// -- Prepare Timeline
 		prepareTimeline();
@@ -337,8 +342,8 @@ public class MainScope extends Application {
 				// timeCapture = System.nanoTime();
 
 				// addRandomDataToSeries();
-				// addTestDataToSeries();
-				addScopeDataToSeries();
+				 addTestDataToSeries();
+//				addScopeDataToSeries();
 
 				// timeElapsed = (long) (1.0e6/(System.nanoTime() -
 				// timeCapture));
@@ -398,7 +403,22 @@ public class MainScope extends Application {
 
 		hboxTime.getChildren().addAll(btnStart, btnClear);
 
-		paneTimeControls.getChildren().add(hboxTime);
+		// Division scaling controls
+		ObservableList<String> listDivisionsText = FXCollections.observableArrayList(//
+	               "2 V/div", "1 V/div", "500 mV/div", "50 mV/div", //
+	               "20 mV/div", "5 mV/div");
+		
+		SpinnerValueFactory<String> valueFactoryVoltageDiv = //
+				new SpinnerValueFactory.ListSpinnerValueFactory<String>(listDivisionsText);
+		valueFactoryVoltageDiv.setValue("2 V/div");
+		
+		final Spinner<String> spinVoltageScale = new Spinner<String>();
+		spinVoltageScale.setValueFactory(valueFactoryVoltageDiv);
+
+		BorderPane brdrVoltageControls = new BorderPane();
+		brdrVoltageControls.setCenter(spinVoltageScale);
+		
+		paneTimeControls.getChildren().addAll(hboxTime, brdrVoltageControls);
 
 		/*
 		 * FFT control panel
