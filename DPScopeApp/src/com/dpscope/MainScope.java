@@ -13,10 +13,7 @@ import com.jfoenix.controls.JFXButton;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -121,6 +118,7 @@ public class MainScope extends Application {
 		lineChart.setHorizontalGridLinesVisible(true);
 		// lineChart.setTitle("Animated Line Chart");
 		lineChart.setHorizontalGridLinesVisible(true);
+		lineChart.setPrefWidth(700);
 
 		// Set Name for Series
 		series1.setName("Series 1");
@@ -129,8 +127,8 @@ public class MainScope extends Application {
 		lineChart.getData().add(series1);
 
 		SplitPane spltPane = new SplitPane();
-		spltPane.setDividerPosition(0, 0.3);
-		spltPane.setMinWidth(Control.USE_PREF_SIZE);
+		spltPane.setDividerPosition(0, 0.18);
+//		spltPane.setMinWidth(Control.USE_PREF_SIZE);
 
 		spltPane.getItems().addAll(tabPaneControls(), lineChart);
 
@@ -199,7 +197,7 @@ public class MainScope extends Application {
 	@Override
 	public void start(Stage stage) {
 		stage.setTitle("DPScope");
-		stage.setMinWidth(700);
+		stage.setMinWidth(900);
 		stage.setMinHeight(400);
 		stage.setWidth(800);
 		stage.setHeight(500);
@@ -369,7 +367,7 @@ public class MainScope extends Application {
 
 		final Button btnStart = new Button("Start".toUpperCase());
 		final Button btnClear = new Button("Clear".toUpperCase());
-		btnStart.setMinWidth(50);
+		btnStart.setMinWidth(70);
 		btnClear.setMinWidth(Control.USE_PREF_SIZE);
 
 		btnStart.setOnAction(new EventHandler<ActionEvent>() {
@@ -412,6 +410,7 @@ public class MainScope extends Application {
 
 		final Spinner<String> spinVoltageScale = new Spinner<String>();
 		spinVoltageScale.setValueFactory(valueFactoryVoltageDiv);
+		spinVoltageScale.setPrefWidth(140);
 
 		spinVoltageScale.valueProperty().addListener((obs, oldValue, newValue) -> {
 			// System.out.println("New value: " + newValue);
@@ -476,7 +475,7 @@ public class MainScope extends Application {
 
 		final MenuButton menuFiltering = new MenuButton();
 		menuFiltering.setText("Filter type");
-		menuFiltering.setMinWidth(90);
+		menuFiltering.setMinWidth(100);
 		final MenuItem menuItemNoFilter = new MenuItem("None");
 		menuItemNoFilter.setOnAction((event) -> {
 			menuFiltering.setText("None");
