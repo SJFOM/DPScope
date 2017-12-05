@@ -31,12 +31,50 @@ public class DPScope extends Observable {
 	public final static float NOMINAL_SUPPLY = 5.0f;
 
 	// Voltage divisions
-	public final static String DIV_TWO_V = "2 V/div";
-	public final static String DIV_ONE_V = "1 V/div";
-	public final static String DIV_FIVE_HUNDRED_MV = "500 mV/div";
-	public final static String DIV_TWO_HUNDRED_MV = "200 mV/div";
-	public final static String DIV_ONE_HUNDRED_MV = "100 mV/div";
-	public final static String DIV_FIFTY_MV = "50 mV/div";
+	public final static String DIV_2_V = "2 V/div";
+	public final static String DIV_1_V = "1 V/div";
+	public final static String DIV_500_MV = "500 mV/div";
+	public final static String DIV_200_MV = "200 mV/div";
+	public final static String DIV_100_MV = "100 mV/div";
+	public final static String DIV_50_MV = "50 mV/div";
+	
+	// Timing divisions
+	public final static String DIV_1_S = "1 s/div";
+	public final static String DIV_500_MS = "500 ms/div";
+	public final static String DIV_200_MS = "200 ms/div";
+	public final static String DIV_100_MS = "100 ms/div";
+	public final static String DIV_50_MS = "50 ms/div";
+	public final static String DIV_20_MS = "20 ms/div";
+	public final static String DIV_10_MS = "10 ms/div";
+	public final static String DIV_5_MS = "5 ms/div";
+	public final static String DIV_2_MS = "2 ms/div";
+	public final static String DIV_1_MS = "1 ms/div";
+	public final static String DIV_500_US = "500 us/div";
+	public final static String DIV_200_US = "200 us/div";
+	public final static String DIV_100_US = "100 us/div";
+	public final static String DIV_50_US = "50 us/div";
+	public final static String DIV_20_US = "20 us/div";
+	public final static String DIV_10_US = "10 us/div";
+	public final static String DIV_5_US = "5 us/div";
+	
+	// Timing division sampling rates
+	public final static String DIV_10_SA = "10 Sa/sec";
+	public final static String DIV_20_SA = "20 Sa/sec";
+	public final static String DIV_50_SA = "50 Sa/sec";
+	public final static String DIV_100_SA = "100 Sa/sec";
+	public final static String DIV_200_SA = "200 Sa/sec";
+	public final static String DIV_500_SA = "500 Sa/sec";
+	public final static String DIV_1_KSA = "1 kSa/sec";
+	public final static String DIV_2_KSA = "2 kSa/sec";
+	public final static String DIV_5_KSA = "5 kSa/sec";
+	public final static String DIV_10_KSA = "10 kSa/sec";
+	public final static String DIV_20_KSA = "20 kSa/sec";
+	public final static String DIV_50_KSA = "50 kSa/sec ALT";;
+	public final static String DIV_100_KSA = "100 kSa/sec ET";
+	public final static String DIV_200_KSA = "200 kSa/sec ET";
+	public final static String DIV_500_KSA = "500 kSa/sec ET";
+	public final static String DIV_1_MSA = "1 MSa/sec ET";
+	public final static String DIV_2_MSA = "2 MSa/sec ET";
 
 	public final static int ALL_BLOCKS = 7;
 

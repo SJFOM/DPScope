@@ -13,7 +13,10 @@ import com.jfoenix.controls.JFXButton;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -83,7 +86,7 @@ public class MainScope extends Application {
 	private ConcurrentLinkedQueue<Number> dataQ1 = new ConcurrentLinkedQueue<>();
 
 	private static AnimationTimer myAnimationTimer;
-	
+
 	private NumberAxis xAxis;
 	private NumberAxis yAxis;
 
@@ -213,7 +216,8 @@ public class MainScope extends Application {
 			}
 		});
 
-		// AddRandomDataToQueue addRandomDataToQueue = new AddRandomDataToQueue();
+		// AddRandomDataToQueue addRandomDataToQueue = new
+		// AddRandomDataToQueue();
 		// executor.execute(addRandomDataToQueue);
 
 		AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
@@ -235,7 +239,8 @@ public class MainScope extends Application {
 
 					// must query scope if its ready for readback
 					while (!isArmed) {
-						// TODO: Should be able to remove/reduce this timeout - test
+						// TODO: Should be able to remove/reduce this timeout -
+						// test
 						// Thread.sleep(10);
 						Thread.sleep(0);
 						// gives enough time to re-check and for readBack
@@ -245,7 +250,8 @@ public class MainScope extends Application {
 					// System.out.println("TestApp - Scope Armed");
 					myScope.queryIfDone();
 					while (!isDone) {
-						// TODO: Should be able to remove/reduce this timeout - test
+						// TODO: Should be able to remove/reduce this timeout -
+						// test
 						// Thread.sleep(5);
 						Thread.sleep(0);
 						// gives enough time to re-check and for readBack
@@ -331,7 +337,6 @@ public class MainScope extends Application {
 		xAxis.setLowerBound(xSeriesData - MAX_DATA_POINTS);
 		xAxis.setUpperBound(xSeriesData - 1);
 	}
-	
 
 	// -- Timeline gets called in the JavaFX Main thread
 	private void prepareTimeline() {
@@ -350,7 +355,6 @@ public class MainScope extends Application {
 			}
 		};
 	}
-	
 
 	private TabPane tabPaneControls() {
 
@@ -376,35 +380,35 @@ public class MainScope extends Application {
 					if (myScope != null) {
 						nextScopeData = true;
 					}
+					btnClear.setDisable(true);
 					myAnimationTimer.start();
 				} else {
 					btnStart.setText("Start".toUpperCase());
 					nextScopeData = true;
+					btnClear.setDisable(false);
 					myAnimationTimer.stop();
 				}
 			}
 		});
 
-		btnClear.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				if (!series1.getData().isEmpty()) {
-					series1.getData().clear();
-				}
-				if (!dataQ1.isEmpty()) {
-					dataQ1.clear();
-				}
+		// Experimenting with lambda expressions
+		btnClear.setOnAction((event) -> {
+			if (!series1.getData().isEmpty()) {
+				series1.getData().clear();
+			}
+			if (!dataQ1.isEmpty()) {
+				dataQ1.clear();
 			}
 		});
 
 		// Division scaling controls
 		ObservableList<String> listDivisionsText = FXCollections.observableArrayList(//
-				DPScope.DIV_FIFTY_MV, DPScope.DIV_ONE_HUNDRED_MV, DPScope.DIV_TWO_HUNDRED_MV, //
-				DPScope.DIV_FIVE_HUNDRED_MV, DPScope.DIV_ONE_V, DPScope.DIV_TWO_V);
+				DPScope.DIV_50_MV, DPScope.DIV_100_MV, DPScope.DIV_200_MV, //
+				DPScope.DIV_500_MV, DPScope.DIV_1_V, DPScope.DIV_2_V);
 
 		SpinnerValueFactory<String> valueFactoryVoltageDiv = //
 				new SpinnerValueFactory.ListSpinnerValueFactory<String>(listDivisionsText);
-		valueFactoryVoltageDiv.setValue("2 V/div");
+		valueFactoryVoltageDiv.setValue(DPScope.DIV_2_V);
 
 		final Spinner<String> spinVoltageScale = new Spinner<String>();
 		spinVoltageScale.setValueFactory(valueFactoryVoltageDiv);
@@ -412,45 +416,44 @@ public class MainScope extends Application {
 		spinVoltageScale.valueProperty().addListener((obs, oldValue, newValue) -> {
 			// System.out.println("New value: " + newValue);
 			switch (newValue) {
-			case DPScope.DIV_TWO_V:
+			case DPScope.DIV_2_V:
 				yAxis.setUpperBound(20);
 				yAxis.setLowerBound(-20);
 				yAxis.setTickUnit(4);
 				break;
-			case DPScope.DIV_ONE_V:
+			case DPScope.DIV_1_V:
 				yAxis.setUpperBound(10);
 				yAxis.setLowerBound(-10);
 				yAxis.setTickUnit(2);
 				break;
-			case DPScope.DIV_FIVE_HUNDRED_MV:
+			case DPScope.DIV_500_MV:
 				yAxis.setUpperBound(5);
 				yAxis.setLowerBound(-5);
 				yAxis.setTickUnit(1);
 				break;
-			case DPScope.DIV_TWO_HUNDRED_MV:
-				yAxis.setUpperBound(2.5);
-				yAxis.setLowerBound(-2.5);
-				yAxis.setTickUnit(0.5);
+			case DPScope.DIV_200_MV:
+				yAxis.setUpperBound(2);
+				yAxis.setLowerBound(-2);
+				yAxis.setTickUnit(0.4);
 				break;
-			case DPScope.DIV_ONE_HUNDRED_MV:
-				yAxis.setUpperBound(1.25);
-				yAxis.setLowerBound(-1.25);
-				yAxis.setTickUnit(0.25);
+			case DPScope.DIV_100_MV:
+				yAxis.setUpperBound(1);
+				yAxis.setLowerBound(-1);
+				yAxis.setTickUnit(0.2);
 				break;
-			case DPScope.DIV_FIFTY_MV:
-				yAxis.setUpperBound(0.625);
-				yAxis.setLowerBound(-0.625);
-				yAxis.setTickUnit(0.125);
+			case DPScope.DIV_50_MV:
+				yAxis.setUpperBound(0.5);
+				yAxis.setLowerBound(-0.5);
+				yAxis.setTickUnit(0.1);
 				break;
 			default:
 				break;
 			}
 		});
-		
 
 		BorderPane brdrVoltageControls = new BorderPane();
 		brdrVoltageControls.setCenter(spinVoltageScale);
-		brdrVoltageControls.setStyle("-fx-border-color: red");
+//		brdrVoltageControls.setStyle("-fx-border-color: red");
 
 		FlowPane flowPaneControls = new FlowPane();
 		flowPaneControls.setHgap(10);
@@ -473,10 +476,29 @@ public class MainScope extends Application {
 
 		final MenuButton menuFiltering = new MenuButton();
 		menuFiltering.setText("Filter type");
+		menuFiltering.setMinWidth(90);
+		final MenuItem menuItemNoFilter = new MenuItem("None");
+		menuItemNoFilter.setOnAction((event) -> {
+			menuFiltering.setText("None");
+		});
 
-		menuFiltering.getItems().add(new MenuItem("None"));
-		menuFiltering.getItems().add(new MenuItem("Hamming"));
-		menuFiltering.getItems().add(new MenuItem("Hanning"));
+		final MenuItem menuItemHamming = new MenuItem("Hamming");
+		menuItemHamming.setOnAction((event) -> {
+			menuFiltering.setText("Hamming");
+		});
+
+		final MenuItem menuItemHanning = new MenuItem("Hanning");
+		menuItemHanning.setOnAction((event) -> {
+			menuFiltering.setText("Hanning");
+		});
+
+		final MenuItem menuItemBlackman = new MenuItem("Blackman");
+		menuItemBlackman.setOnAction((event) -> {
+			menuFiltering.setText("Blackman");
+		});
+		
+		menuFiltering.getItems().addAll(menuItemNoFilter, menuItemHamming, //
+				menuItemHanning, menuItemBlackman);
 
 		BorderPane bpaneFFT = new BorderPane();
 		bpaneFFT.setPadding(new Insets(15, 15, 15, 15));
