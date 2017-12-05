@@ -29,15 +29,15 @@ public class DPScope extends Observable {
 	public final static byte CH_BATTERY = (byte) 15;
 
 	public final static float NOMINAL_SUPPLY = 5.0f;
-	
+
 	// Voltage divisions
 	public final static String DIV_TWO_V = "2 V/div";
 	public final static String DIV_ONE_V = "1 V/div";
 	public final static String DIV_FIVE_HUNDRED_MV = "500 mV/div";
-	public final static String DIV_TWENTY_MV = "20 mV/div";
-	public final static String DIV_TEN_MV = "10 mV/div";
-	public final static String DIV_FIVE_MV = "5 mV/div";
-	
+	public final static String DIV_TWO_HUNDRED_MV = "200 mV/div";
+	public final static String DIV_ONE_HUNDRED_MV = "100 mV/div";
+	public final static String DIV_FIFTY_MV = "50 mV/div";
+
 	public final static int ALL_BLOCKS = 7;
 
 	// First 422 (of 448) bytes are valid in readBack - rest is junk
@@ -47,15 +47,16 @@ public class DPScope extends Observable {
 	/*
 	 * ADC acquisition parameters - from MainModule.bas
 	 *
-	 * 5 (FOSC/16) is the fastest that seems to work (outside spec!); maybe use 2
-	 * (FOSC/32) instead (still a bit outside spec) Public Const ADCS As Long = 2
+	 * 5 (FOSC/16) is the fastest that seems to work (outside spec!); maybe use
+	 * 2 (FOSC/32) instead (still a bit outside spec) Public Const ADCS As Long
+	 * = 2
 	 *
-	 * minimal valid values: >= 3 for FOSC/64; >=5 (12 Tad) for FOSC/32; 7 (20 Tad)
-	 * for FOSC/16 Fosc=48 MHz, ADCS 6 = FOSC/64, ACQT 3 = 6 Tad --> Tacq_min = 64 *
-	 * (11 + 6 + 2) / 48 = 25.33 us Fosc=48 MHz, ADCS 2 = FOSC/32, ACQT 5 = 12 Tad
-	 * --> Tacq_min = 32 * (11 + 12 + 2) / 48 = 16.67 us Fosc=48 MHz, ADCS 5 =
-	 * FOSC/16, ACQT 7 = 20 Tad --> Tacq_min = 16 * (11 + 20 + 2) / 48 = 11.00 us
-	 * Public Const ACQT As Long = 5
+	 * minimal valid values: >= 3 for FOSC/64; >=5 (12 Tad) for FOSC/32; 7 (20
+	 * Tad) for FOSC/16 Fosc=48 MHz, ADCS 6 = FOSC/64, ACQT 3 = 6 Tad -->
+	 * Tacq_min = 64 * (11 + 6 + 2) / 48 = 25.33 us Fosc=48 MHz, ADCS 2 =
+	 * FOSC/32, ACQT 5 = 12 Tad --> Tacq_min = 32 * (11 + 12 + 2) / 48 = 16.67
+	 * us Fosc=48 MHz, ADCS 5 = FOSC/16, ACQT 7 = 20 Tad --> Tacq_min = 16 * (11
+	 * + 20 + 2) / 48 = 11.00 us Public Const ACQT As Long = 5
 	 */
 
 	private final static int ADCS = 2;
@@ -216,16 +217,20 @@ public class DPScope extends Observable {
 							// read back each block of 64 bytes
 							// First 422 bytes (of 448) are good - rest is junk
 							int buffOffset = ((int) txBuf[1]) * 64;
-							// TODO: Read back 38 bytes (instead of 64) if currBlock = 6
+							// TODO: Read back 38 bytes (instead of 64) if
+							// currBlock = 6
 							for (int idx = 0; idx < 64; idx++) {
-//								scopeBuffer[idx + buffOffset] = (int) ((rxBuf[idx] & 0xFF) - 127);
+								// scopeBuffer[idx + buffOffset] = (int)
+								// ((rxBuf[idx] & 0xFF) - 127);
 								scopeBuffer[idx + buffOffset] = (int) ((rxBuf[idx] & 0xFF) - 128);
 							}
 
 							if (currBlock == 6) {
 								// all blocks read from
-								// System.out.println("CMD_READBACK - all blocks read");
-								// mapOfArguments.put(Command.CMD_READBACK, scopeBuffer);
+								// System.out.println("CMD_READBACK - all blocks
+								// read");
+								// mapOfArguments.put(Command.CMD_READBACK,
+								// scopeBuffer);
 								mapOfArguments.put(Command.CMD_READBACK, null);
 								setChanged();
 								notifyObservers(mapOfArguments);
@@ -279,7 +284,8 @@ public class DPScope extends Observable {
 									/ ((int) (rxBuf[0] & 0xFF) * 256 + (rxBuf[1] & 0xFF));
 							channels[0] = usbSupplyVoltage;
 							// channels[0] = avgVolts / count;
-							// System.out.printf("USB voltage: %.3f\n", avgVolts / count);
+							// System.out.printf("USB voltage: %.3f\n", avgVolts
+							// / count);
 							mapOfArguments.put(Command.CMD_CHECK_USB_SUPPLY, channels);
 							setChanged();
 							notifyObservers(mapOfArguments);
@@ -346,12 +352,12 @@ public class DPScope extends Observable {
 
 	// CMD_ARM (5) - Sets all acquisition parameters and arms scope
 	/*
-	 * ' ARM parameters (watch out, VB array is 1-based, MikroC array is 0-based) '
-	 * 1: command ' 2: first channel to acquire ' 3: second channel to acquire ' 4:
-	 * acquisition parameters (sample clock divider, acquisition time) ' 5: timer 0
-	 * preload high ' 6: timer 0 preload low ' 7: timer 0 prescaler bypass (0 = use
-	 * prescaler, 1 = bypass prescaler) ' 8: timer 0 prescaler as power of 2
-	 * (7=div256, 0=div2): divide = 2^(PS+1)
+	 * ' ARM parameters (watch out, VB array is 1-based, MikroC array is
+	 * 0-based) ' 1: command ' 2: first channel to acquire ' 3: second channel
+	 * to acquire ' 4: acquisition parameters (sample clock divider, acquisition
+	 * time) ' 5: timer 0 preload high ' 6: timer 0 preload low ' 7: timer 0
+	 * prescaler bypass (0 = use prescaler, 1 = bypass prescaler) ' 8: timer 0
+	 * prescaler as power of 2 (7=div256, 0=div2): divide = 2^(PS+1)
 	 */
 	public void armScope(byte ch1, byte ch2) {
 		actionQueue.add(new BootAction() {
@@ -384,13 +390,15 @@ public class DPScope extends Observable {
 				txBuf[16] = (byte) 0; // sampling mode:
 										// 0 = real time,
 										// 1 = equivalent time)
-				txBuf[17] = (byte) 2; // equivalent time sample interval in 0.5 usec
+				txBuf[17] = (byte) 2; // equivalent time sample interval in 0.5
+										// usec
 				// increments
 				txBuf[18] = (byte) (txBuf[17] >> 1); // equivalent time trigger
 				// stability check period (half
 				// of byte 17 value is a good
 				// choice)
-				txBuf[19] = (byte) 1; // trigger channel to use (1 = CH1 gain 1, 2 =
+				txBuf[19] = (byte) 1; // trigger channel to use (1 = CH1 gain 1,
+										// 2 =
 										// CH1
 				// gain 10, 3 = ext. trigger)
 				length = 20;

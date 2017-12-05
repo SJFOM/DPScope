@@ -16,7 +16,6 @@ import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
-import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -50,7 +49,6 @@ public class MainScope extends Application {
 	private volatile static boolean readBackDone = false;
 	private volatile static boolean isDone = false;
 	private volatile static boolean isArmed = false;
-	private volatile static boolean scopeRead = false;
 	private volatile static boolean nextScopeData = false;
 
 	// offset found by measuring P & G pins at rear of scope
@@ -84,6 +82,8 @@ public class MainScope extends Application {
 	private ExecutorService executor;
 	private ConcurrentLinkedQueue<Number> dataQ1 = new ConcurrentLinkedQueue<>();
 
+	private static AnimationTimer myAnimationTimer;
+	
 	private NumberAxis xAxis;
 	private NumberAxis yAxis;
 
@@ -93,7 +93,8 @@ public class MainScope extends Application {
 
 	private void init(Stage primaryStage) {
 
-		xAxis = new NumberAxis(0, DPScope.MAX_DATA_PER_CHANNEL, DPScope.MAX_DATA_PER_CHANNEL / 10);
+		// 211 / 10.55 = 20 divisions
+		xAxis = new NumberAxis(0, DPScope.MAX_DATA_PER_CHANNEL, 10.55);
 		xAxis.setForceZeroInRange(false);
 		xAxis.setAutoRanging(false);
 		xAxis.setTickLabelsVisible(false);
@@ -102,8 +103,6 @@ public class MainScope extends Application {
 
 		yAxis = new NumberAxis(-20, 20, 4);
 		// yAxis.setAutoRanging(true);
-		// yAxis.setUpperBound(20);
-		// yAxis.setLowerBound(0);
 
 		// Create a LineChart
 		final LineChart<Number, Number> lineChart = new LineChart<Number, Number>(xAxis, yAxis) {
@@ -295,7 +294,7 @@ public class MainScope extends Application {
 	}
 
 	private void addScopeDataToSeries() {
-		if (scopeRead && readBackDone) {
+		if (readBackDone) {
 			readBackDone = false;
 			series1.getData().clear();
 
@@ -308,37 +307,36 @@ public class MainScope extends Application {
 	}
 
 	private void addTestDataToSeries() {
-		if (scopeRead && nextTestData) {
+		if (nextTestData) {
 			series1.getData().clear();
 			nextTestData = false;
 			for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i++) {
-				series1.getData().add(new XYChart.Data<>(i, Math.random()));
+				series1.getData().add(new XYChart.Data<>(i, Math.random() - 0.5));
 			}
 			nextTestData = true;
 		}
 	}
 
 	private void addRandomDataToSeries() {
-		if (scopeRead) {
-			for (int i = 0; i < 20; i++) { // -- add 20 numbers to the plot+
-				if (dataQ1.isEmpty())
-					break;
-				series1.getData().add(new XYChart.Data<>(xSeriesData++, dataQ1.remove()));
-			}
-			// remove points to keep us at no more than MAX_DATA_POINTS
-			if (series1.getData().size() > MAX_DATA_POINTS) {
-				series1.getData().remove(0, series1.getData().size() - MAX_DATA_POINTS);
-			}
-			// update
-			xAxis.setLowerBound(xSeriesData - MAX_DATA_POINTS);
-			xAxis.setUpperBound(xSeriesData - 1);
+		for (int i = 0; i < 20; i++) { // -- add 20 numbers to the plot+
+			if (dataQ1.isEmpty())
+				break;
+			series1.getData().add(new XYChart.Data<>(xSeriesData++, dataQ1.remove()));
 		}
+		// remove points to keep us at no more than MAX_DATA_POINTS
+		if (series1.getData().size() > MAX_DATA_POINTS) {
+			series1.getData().remove(0, series1.getData().size() - MAX_DATA_POINTS);
+		}
+		// update
+		xAxis.setLowerBound(xSeriesData - MAX_DATA_POINTS);
+		xAxis.setUpperBound(xSeriesData - 1);
 	}
+	
 
 	// -- Timeline gets called in the JavaFX Main thread
 	private void prepareTimeline() {
 		// Every frame to take any data from queue and add to chart
-		new AnimationTimer() {
+		myAnimationTimer = new AnimationTimer() {
 			@Override
 			public void handle(long now) {
 				// timeCapture = System.nanoTime();
@@ -350,8 +348,9 @@ public class MainScope extends Application {
 				// timeElapsed = (long) (1.0e6/(System.nanoTime() -
 				// timeCapture));
 			}
-		}.start();
+		};
 	}
+	
 
 	private TabPane tabPaneControls() {
 
@@ -374,14 +373,14 @@ public class MainScope extends Application {
 			public void handle(ActionEvent e) {
 				if (btnStart.getText().equals("Start".toUpperCase())) {
 					btnStart.setText("Stop".toUpperCase());
-					scopeRead = true;
 					if (myScope != null) {
 						nextScopeData = true;
 					}
+					myAnimationTimer.start();
 				} else {
 					btnStart.setText("Start".toUpperCase());
-					scopeRead = false;
 					nextScopeData = true;
+					myAnimationTimer.stop();
 				}
 			}
 		});
@@ -400,8 +399,8 @@ public class MainScope extends Application {
 
 		// Division scaling controls
 		ObservableList<String> listDivisionsText = FXCollections.observableArrayList(//
-				DPScope.DIV_TWO_V, DPScope.DIV_ONE_V, DPScope.DIV_FIVE_HUNDRED_MV, DPScope.DIV_TWENTY_MV,
-				DPScope.DIV_TEN_MV, DPScope.DIV_FIVE_MV);
+				DPScope.DIV_FIFTY_MV, DPScope.DIV_ONE_HUNDRED_MV, DPScope.DIV_TWO_HUNDRED_MV, //
+				DPScope.DIV_FIVE_HUNDRED_MV, DPScope.DIV_ONE_V, DPScope.DIV_TWO_V);
 
 		SpinnerValueFactory<String> valueFactoryVoltageDiv = //
 				new SpinnerValueFactory.ListSpinnerValueFactory<String>(listDivisionsText);
@@ -428,10 +427,26 @@ public class MainScope extends Application {
 				yAxis.setLowerBound(-5);
 				yAxis.setTickUnit(1);
 				break;
+			case DPScope.DIV_TWO_HUNDRED_MV:
+				yAxis.setUpperBound(2.5);
+				yAxis.setLowerBound(-2.5);
+				yAxis.setTickUnit(0.5);
+				break;
+			case DPScope.DIV_ONE_HUNDRED_MV:
+				yAxis.setUpperBound(1.25);
+				yAxis.setLowerBound(-1.25);
+				yAxis.setTickUnit(0.25);
+				break;
+			case DPScope.DIV_FIFTY_MV:
+				yAxis.setUpperBound(0.625);
+				yAxis.setLowerBound(-0.625);
+				yAxis.setTickUnit(0.125);
+				break;
 			default:
 				break;
 			}
 		});
+		
 
 		BorderPane brdrVoltageControls = new BorderPane();
 		brdrVoltageControls.setCenter(spinVoltageScale);
@@ -502,7 +517,6 @@ public class MainScope extends Application {
 			myScope.disconnect();
 			myScope.deleteObservers();
 			myScope = null;
-			scopeRead = false;
 			nextScopeData = false;
 			return true;
 		}
