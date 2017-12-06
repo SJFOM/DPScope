@@ -119,6 +119,7 @@ public class MainScope extends Application {
 		// lineChart.setTitle("Animated Line Chart");
 		lineChart.setHorizontalGridLinesVisible(true);
 		lineChart.setPrefWidth(700);
+//		lineChart.setOpacity(0.8);
 
 		// Set Name for Series
 		series1.setName("Series 1");
@@ -368,7 +369,8 @@ public class MainScope extends Application {
 		final Button btnStart = new Button("Start".toUpperCase());
 		final Button btnClear = new Button("Clear".toUpperCase());
 		btnStart.setMinWidth(70);
-		btnClear.setMinWidth(Control.USE_PREF_SIZE);
+		btnClear.setMinWidth(70);
+//		btnClear.setMinWidth(Control.USE_PREF_SIZE);
 
 		btnStart.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
@@ -410,7 +412,7 @@ public class MainScope extends Application {
 
 		final Spinner<String> spinVoltageScale = new Spinner<String>();
 		spinVoltageScale.setValueFactory(valueFactoryVoltageDiv);
-		spinVoltageScale.setPrefWidth(140);
+		spinVoltageScale.setPrefWidth(150);
 
 		spinVoltageScale.valueProperty().addListener((obs, oldValue, newValue) -> {
 			// System.out.println("New value: " + newValue);

@@ -436,8 +436,7 @@ public class DPScope extends Observable {
 				// of byte 17 value is a good
 				// choice)
 				txBuf[19] = (byte) 1; // trigger channel to use (1 = CH1 gain 1,
-										// 2 =
-										// CH1
+										// 2 = CH1
 				// gain 10, 3 = ext. trigger)
 				length = 20;
 				currCmd = Command.CMD_ARM;
