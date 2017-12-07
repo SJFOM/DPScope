@@ -25,9 +25,9 @@ import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Control;
-import javafx.scene.control.MenuButton;
-import javafx.scene.control.MenuItem;
+import javafx.scene.control.Separator;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.SplitPane;
@@ -119,7 +119,7 @@ public class MainScope extends Application {
 		// lineChart.setTitle("Animated Line Chart");
 		lineChart.setHorizontalGridLinesVisible(true);
 		lineChart.setPrefWidth(700);
-//		lineChart.setOpacity(0.8);
+		// lineChart.setOpacity(0.8);
 
 		// Set Name for Series
 		series1.setName("Series 1");
@@ -129,7 +129,7 @@ public class MainScope extends Application {
 
 		SplitPane spltPane = new SplitPane();
 		spltPane.setDividerPosition(0, 0.18);
-//		spltPane.setMinWidth(Control.USE_PREF_SIZE);
+		// spltPane.setMinWidth(Control.USE_PREF_SIZE);
 
 		spltPane.getItems().addAll(tabPaneControls(), lineChart);
 
@@ -370,7 +370,7 @@ public class MainScope extends Application {
 		final Button btnClear = new Button("Clear".toUpperCase());
 		btnStart.setMinWidth(70);
 		btnClear.setMinWidth(70);
-//		btnClear.setMinWidth(Control.USE_PREF_SIZE);
+		// btnClear.setMinWidth(Control.USE_PREF_SIZE);
 
 		btnStart.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
@@ -454,7 +454,7 @@ public class MainScope extends Application {
 
 		BorderPane brdrVoltageControls = new BorderPane();
 		brdrVoltageControls.setCenter(spinVoltageScale);
-//		brdrVoltageControls.setStyle("-fx-border-color: red");
+		// brdrVoltageControls.setStyle("-fx-border-color: red");
 
 		FlowPane flowPaneControls = new FlowPane();
 		flowPaneControls.setHgap(10);
@@ -475,35 +475,20 @@ public class MainScope extends Application {
 		tabFFT.setClosable(false);
 		tabFFT.setContent(paneFFTControls);
 
-		final MenuButton menuFiltering = new MenuButton();
-		menuFiltering.setText("Filter type");
-		menuFiltering.setMinWidth(100);
-		final MenuItem menuItemNoFilter = new MenuItem("None");
-		menuItemNoFilter.setOnAction((event) -> {
-			menuFiltering.setText("None");
-		});
-
-		final MenuItem menuItemHamming = new MenuItem("Hamming");
-		menuItemHamming.setOnAction((event) -> {
-			menuFiltering.setText("Hamming");
-		});
-
-		final MenuItem menuItemHanning = new MenuItem("Hanning");
-		menuItemHanning.setOnAction((event) -> {
-			menuFiltering.setText("Hanning");
-		});
-
-		final MenuItem menuItemBlackman = new MenuItem("Blackman");
-		menuItemBlackman.setOnAction((event) -> {
-			menuFiltering.setText("Blackman");
-		});
+		// final MenuButton menuFiltering = new MenuButton();
+		final ChoiceBox<Object> choiceFiltering = new ChoiceBox<Object>();
+		choiceFiltering.setMinWidth(100);
+		choiceFiltering.getItems()
+				.addAll("None", new Separator(), "Hamming", "Hanning", "Blackman");
+		choiceFiltering.getSelectionModel().selectFirst();
 		
-		menuFiltering.getItems().addAll(menuItemNoFilter, menuItemHamming, //
-				menuItemHanning, menuItemBlackman);
+		choiceFiltering.valueProperty().addListener((obs, oldValue, newValue) -> {
+			System.out.println(newValue);
+		});
 
 		BorderPane bpaneFFT = new BorderPane();
 		bpaneFFT.setPadding(new Insets(15, 15, 15, 15));
-		bpaneFFT.setTop(menuFiltering);
+		bpaneFFT.setTop(choiceFiltering);
 		bpaneFFT.prefWidthProperty().bind(paneFFTControls.widthProperty());
 		bpaneFFT.prefHeightProperty().bind(paneFFTControls.heightProperty());
 
