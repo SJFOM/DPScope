@@ -31,31 +31,56 @@ public class DPScope extends Observable {
 	public final static float NOMINAL_SUPPLY = 5.0f;
 
 	// Voltage divisions
-	public final static String DIV_2_V = "2 V/div";
-	public final static String DIV_1_V = "1 V/div";
-	public final static String DIV_500_MV = "500 mV/div";
-	public final static String DIV_200_MV = "200 mV/div";
-	public final static String DIV_100_MV = "100 mV/div";
-	public final static String DIV_50_MV = "50 mV/div";
+	protected final static String DIV_2_V = "2 V/div";
+	protected final static String DIV_1_V = "1 V/div";
+	protected final static String DIV_500_MV = "500 mV/div";
+	protected final static String DIV_200_MV = "200 mV/div";
+	protected final static String DIV_100_MV = "100 mV/div";
+	protected final static String DIV_50_MV = "50 mV/div";
+	
+	public final static LinkedHashMap<String, Double> mapVoltageDivs;
+	static {
+		mapVoltageDivs = new LinkedHashMap<String, Double>(6);
+		mapVoltageDivs.put(DIV_50_MV, 0.125);
+		mapVoltageDivs.put(DIV_100_MV, 0.25);
+		mapVoltageDivs.put(DIV_200_MV, 0.5);
+		mapVoltageDivs.put(DIV_500_MV, 1.25);
+		mapVoltageDivs.put(DIV_1_V, 2.5);
+		mapVoltageDivs.put(DIV_2_V, 5.0);
+	}
 	
 	// Timing divisions
-	public final static String DIV_1_S = "1 s/div";
-	public final static String DIV_500_MS = "500 ms/div";
-	public final static String DIV_200_MS = "200 ms/div";
-	public final static String DIV_100_MS = "100 ms/div";
-	public final static String DIV_50_MS = "50 ms/div";
-	public final static String DIV_20_MS = "20 ms/div";
-	public final static String DIV_10_MS = "10 ms/div";
-	public final static String DIV_5_MS = "5 ms/div";
-	public final static String DIV_2_MS = "2 ms/div";
-	public final static String DIV_1_MS = "1 ms/div";
-	public final static String DIV_500_US = "500 us/div";
-	public final static String DIV_200_US = "200 us/div";
-	public final static String DIV_100_US = "100 us/div";
-	public final static String DIV_50_US = "50 us/div";
-	public final static String DIV_20_US = "20 us/div";
-	public final static String DIV_10_US = "10 us/div";
-	public final static String DIV_5_US = "5 us/div";
+	protected final static String DIV_1_S = "1 s/div";
+	protected final static String DIV_500_MS = "500 ms/div";
+	protected final static String DIV_200_MS = "200 ms/div";
+	protected final static String DIV_100_MS = "100 ms/div";
+	protected final static String DIV_50_MS = "50 ms/div";
+	protected final static String DIV_20_MS = "20 ms/div";
+	protected final static String DIV_10_MS = "10 ms/div";
+	protected final static String DIV_5_MS = "5 ms/div";
+	protected final static String DIV_2_MS = "2 ms/div";
+	protected final static String DIV_1_MS = "1 ms/div";
+	protected final static String DIV_500_US = "500 us/div";
+	protected final static String DIV_200_US = "200 us/div";
+	protected final static String DIV_100_US = "100 us/div";
+	protected final static String DIV_50_US = "50 us/div";
+	protected final static String DIV_20_US = "20 us/div";
+	protected final static String DIV_10_US = "10 us/div";
+	protected final static String DIV_5_US = "5 us/div";
+	
+	public final static LinkedHashMap<String, Double> mapTimeDivs;
+	static {
+		mapTimeDivs = new LinkedHashMap<String, Double>(17);
+		mapTimeDivs.put(DIV_1_S, 1.0);     mapTimeDivs.put(DIV_500_MS, 1.0);
+		mapTimeDivs.put(DIV_200_MS, 1.0);  mapTimeDivs.put(DIV_100_MS, 1.0);
+		mapTimeDivs.put(DIV_50_MS, 1.0);   mapTimeDivs.put(DIV_20_MS, 1.0);
+		mapTimeDivs.put(DIV_10_MS, 1.0);   mapTimeDivs.put(DIV_5_MS, 1.0);
+		mapTimeDivs.put(DIV_2_MS, 1.0);    mapTimeDivs.put(DIV_1_MS, 1.0);
+		mapTimeDivs.put(DIV_500_US, 1.0);  mapTimeDivs.put(DIV_200_US, 1.0);
+		mapTimeDivs.put(DIV_100_US, 1.0);  mapTimeDivs.put(DIV_50_US, 1.0);
+		mapTimeDivs.put(DIV_20_US, 1.0);   mapTimeDivs.put(DIV_10_US, 1.0);
+		mapTimeDivs.put(DIV_5_US, 1.0); 
+	}
 	
 	// Timing division sampling rates
 	public final static String DIV_10_SA = "10 Sa/sec";
@@ -201,6 +226,10 @@ public class DPScope extends Observable {
 				hidDev.setDeviceRemovalListener(new DeviceRemovalListener() {
 					@Override
 					public void onDeviceRemoval(HidDevice source) {
+						/* TODO: If scope is plotting and device is removed be able to handle it properly
+						 * App crashes if it happens currently
+						 */
+						 
 						System.out.println("device removed");
 						deviceOpen = false;
 						isReady = false;

@@ -101,7 +101,7 @@ public class MainScope extends Application {
 		xAxis.setTickMarkVisible(false);
 		xAxis.setMinorTickVisible(false);
 
-		yAxis = new NumberAxis(-20, 20, 4);
+		yAxis = new NumberAxis(-25, 25, 5);
 		// yAxis.setAutoRanging(true);
 
 		// Create a LineChart
@@ -219,14 +219,14 @@ public class MainScope extends Application {
 		// AddRandomDataToQueue();
 		// executor.execute(addRandomDataToQueue);
 
-		AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
-		executor.execute(addTestDataToQueue);
+		// AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
+		// executor.execute(addTestDataToQueue);
 
-		// AddScopeDataToQueue addScopeDataToQueue = new AddScopeDataToQueue();
-		// executor.execute(addScopeDataToQueue);
+//		AddScopeDataToQueue addScopeDataToQueue = new AddScopeDataToQueue();
+//		executor.execute(addScopeDataToQueue);
 
 		// -- Prepare Timeline
-		prepareTimeline();
+//		prepareTimeline();
 	}
 
 	private class AddScopeDataToQueue implements Runnable {
@@ -338,21 +338,35 @@ public class MainScope extends Application {
 	}
 
 	// -- Timeline gets called in the JavaFX Main thread
-	private void prepareTimeline() {
+	private void prepareTimeline(int dataSeries) {
 		// Every frame to take any data from queue and add to chart
-		myAnimationTimer = new AnimationTimer() {
-			@Override
-			public void handle(long now) {
-				// timeCapture = System.nanoTime();
+		if (dataSeries == 0) {
+			myAnimationTimer = new AnimationTimer() {
+				@Override
+				public void handle(long now) {
+					// timeCapture = System.nanoTime();
 
-				// addRandomDataToSeries();
-				addTestDataToSeries();
-				// addScopeDataToSeries();
+					// addRandomDataToSeries();
+					 addTestDataToSeries();
 
-				// timeElapsed = (long) (1.0e6/(System.nanoTime() -
-				// timeCapture));
-			}
-		};
+					// timeElapsed = (long) (1.0e6/(System.nanoTime() -
+					// timeCapture));
+				}
+			};
+		} else if (dataSeries == 1) {
+			myAnimationTimer = new AnimationTimer() {
+				@Override
+				public void handle(long now) {
+					// timeCapture = System.nanoTime();
+
+					// addRandomDataToSeries();
+					addScopeDataToSeries();
+
+					// timeElapsed = (long) (1.0e6/(System.nanoTime() -
+					// timeCapture));
+				}
+			};
+		}
 	}
 
 	private TabPane tabPaneControls() {
@@ -379,14 +393,23 @@ public class MainScope extends Application {
 					btnStart.setText("Stop".toUpperCase());
 					if (myScope != null) {
 						nextScopeData = true;
+						AddScopeDataToQueue addScopeDataToQueue = new AddScopeDataToQueue();
+						executor.execute(addScopeDataToQueue);
+						prepareTimeline(1);
+					} else {
+						// Just add test data to scope instead
+						 AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
+						 executor.execute(addTestDataToQueue);
+						 prepareTimeline(0);
 					}
 					btnClear.setDisable(true);
 					myAnimationTimer.start();
 				} else {
 					btnStart.setText("Start".toUpperCase());
-					nextScopeData = true;
+					nextScopeData = false;
 					btnClear.setDisable(false);
 					myAnimationTimer.stop();
+					myAnimationTimer = null;
 				}
 			}
 		});
@@ -401,60 +424,53 @@ public class MainScope extends Application {
 			}
 		});
 
-		// Division scaling controls
-		ObservableList<String> listDivisionsText = FXCollections.observableArrayList(//
-				DPScope.DIV_50_MV, DPScope.DIV_100_MV, DPScope.DIV_200_MV, //
-				DPScope.DIV_500_MV, DPScope.DIV_1_V, DPScope.DIV_2_V);
-
+		// Voltage division scaling controls
+//		ObservableList<String> listVoltageDivisionsText = FXCollections.observableArrayList(//
+//				DPScope.DIV_50_MV, DPScope.DIV_100_MV, DPScope.DIV_200_MV, //
+//				DPScope.DIV_500_MV, DPScope.DIV_1_V, DPScope.DIV_2_V);
+		
+		ObservableList<String> listVoltageDivisionsText = FXCollections.observableArrayList(DPScope.mapVoltageDivs.keySet());	
+		
 		SpinnerValueFactory<String> valueFactoryVoltageDiv = //
-				new SpinnerValueFactory.ListSpinnerValueFactory<String>(listDivisionsText);
+				new SpinnerValueFactory.ListSpinnerValueFactory<String>(listVoltageDivisionsText);
 		valueFactoryVoltageDiv.setValue(DPScope.DIV_2_V);
 
 		final Spinner<String> spinVoltageScale = new Spinner<String>();
 		spinVoltageScale.setValueFactory(valueFactoryVoltageDiv);
+		spinVoltageScale.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_VERTICAL);
 		spinVoltageScale.setPrefWidth(150);
 
+		
 		spinVoltageScale.valueProperty().addListener((obs, oldValue, newValue) -> {
-			// System.out.println("New value: " + newValue);
-			switch (newValue) {
-			case DPScope.DIV_2_V:
-				yAxis.setUpperBound(20);
-				yAxis.setLowerBound(-20);
-				yAxis.setTickUnit(4);
-				break;
-			case DPScope.DIV_1_V:
-				yAxis.setUpperBound(10);
-				yAxis.setLowerBound(-10);
-				yAxis.setTickUnit(2);
-				break;
-			case DPScope.DIV_500_MV:
-				yAxis.setUpperBound(5);
-				yAxis.setLowerBound(-5);
-				yAxis.setTickUnit(1);
-				break;
-			case DPScope.DIV_200_MV:
-				yAxis.setUpperBound(2);
-				yAxis.setLowerBound(-2);
-				yAxis.setTickUnit(0.4);
-				break;
-			case DPScope.DIV_100_MV:
-				yAxis.setUpperBound(1);
-				yAxis.setLowerBound(-1);
-				yAxis.setTickUnit(0.2);
-				break;
-			case DPScope.DIV_50_MV:
-				yAxis.setUpperBound(0.5);
-				yAxis.setLowerBound(-0.5);
-				yAxis.setTickUnit(0.1);
-				break;
-			default:
-				break;
-			}
+			double divScaler = (double) DPScope.mapVoltageDivs.get(newValue);
+			yAxis.setUpperBound(5 * divScaler);
+			yAxis.setLowerBound(-5 * divScaler);
+			yAxis.setTickUnit(divScaler);
 		});
 
-		BorderPane brdrVoltageControls = new BorderPane();
-		brdrVoltageControls.setCenter(spinVoltageScale);
-		// brdrVoltageControls.setStyle("-fx-border-color: red");
+		// Time division scaling controls
+		ObservableList<String> listTimeDivisionsText = FXCollections.observableArrayList(DPScope.mapTimeDivs.keySet());
+
+		SpinnerValueFactory<String> valueFactoryTimeDiv = //
+				new SpinnerValueFactory.ListSpinnerValueFactory<String>(listTimeDivisionsText);
+		valueFactoryTimeDiv.setValue(DPScope.DIV_1_S);
+
+		final Spinner<String> spinTimeScale = new Spinner<String>();
+		spinTimeScale.setValueFactory(valueFactoryTimeDiv);
+		spinTimeScale.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
+		spinTimeScale.setPrefWidth(150);
+
+		spinTimeScale.valueProperty().addListener((obs, oldValue, newValue) -> {
+			double divScaler = DPScope.mapTimeDivs.get(newValue);
+//			xAxis.setUpperBound(5 * divScaler);
+//			xAxis.setLowerBound(-5 * divScaler);
+//			xAxis.setTickUnit(divScaler);
+		});
+
+		BorderPane brdrScopeControls = new BorderPane();
+		brdrScopeControls.setTop(spinVoltageScale);
+		brdrScopeControls.setCenter(spinTimeScale);
+		brdrScopeControls.setStyle("-fx-border-color: red");
 
 		FlowPane flowPaneControls = new FlowPane();
 		flowPaneControls.setHgap(10);
@@ -463,7 +479,7 @@ public class MainScope extends Application {
 		flowPaneControls.setPrefWidth(200);
 		flowPaneControls.setMaxWidth(200);
 
-		flowPaneControls.getChildren().addAll(btnStart, btnClear, spinVoltageScale);
+		flowPaneControls.getChildren().addAll(btnStart, btnClear, spinVoltageScale, spinTimeScale);
 		paneTimeControls.getChildren().add(flowPaneControls);
 
 		/*
