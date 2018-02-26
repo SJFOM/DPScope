@@ -18,6 +18,7 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.chart.LineChart;
@@ -27,12 +28,15 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Control;
+import javafx.scene.control.RadioButton;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
@@ -50,6 +54,11 @@ public class MainScope extends Application {
 	private volatile static boolean isDone = false;
 	private volatile static boolean isArmed = false;
 	private volatile static boolean nextScopeData = false;
+	
+	// Offsets which select which buffer bytes to read
+	private static final int CHANNEL_1_SELECT = 0;
+	private static final int CHANNEL_2_SELECT = 1;
+	private static int chanSelect = CHANNEL_1_SELECT;
 
 	// offset found by measuring P & G pins at rear of scope
 	private static float vUsbOffset = -0.008f;
@@ -298,19 +307,25 @@ public class MainScope extends Application {
 		}
 	}
 
+	/**
+	 * Function for adding DPScope data to plot
+	 */
 	private void addScopeDataToSeries() {
 		if (readBackDone) {
 			readBackDone = false;
 			series1.getData().clear();
 
 			int j = 0;
-			for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i += 2) {
-				series1.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i]));
+			for (int i = chanSelect; i < DPScope.MAX_READABLE_SIZE; i += 2) {
+				series1.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i]*scaleFactorY));
 			}
 			nextScopeData = true;
 		}
 	}
 
+	/**
+	 * Function for adding random data to plot
+	 */
 	private void addTestDataToSeries() {
 		if (nextTestData) {
 			series1.getData().clear();
@@ -322,21 +337,6 @@ public class MainScope extends Application {
 		}
 	}
 
-	private void addRandomDataToSeries() {
-		for (int i = 0; i < 20; i++) { // -- add 20 numbers to the plot+
-			if (dataQ1.isEmpty())
-				break;
-			series1.getData().add(new XYChart.Data<>(xSeriesData++, dataQ1.remove()));
-		}
-		// remove points to keep us at no more than MAX_DATA_POINTS
-		if (series1.getData().size() > MAX_DATA_POINTS) {
-			series1.getData().remove(0, series1.getData().size() - MAX_DATA_POINTS);
-		}
-		// update
-		xAxis.setLowerBound(xSeriesData - MAX_DATA_POINTS);
-		xAxis.setUpperBound(xSeriesData - 1);
-	}
-
 	// -- Timeline gets called in the JavaFX Main thread
 	private void prepareTimeline(int dataSeries) {
 		// Every frame to take any data from queue and add to chart
@@ -345,10 +345,7 @@ public class MainScope extends Application {
 				@Override
 				public void handle(long now) {
 					// timeCapture = System.nanoTime();
-
-					// addRandomDataToSeries();
 					 addTestDataToSeries();
-
 					// timeElapsed = (long) (1.0e6/(System.nanoTime() -
 					// timeCapture));
 				}
@@ -358,10 +355,7 @@ public class MainScope extends Application {
 				@Override
 				public void handle(long now) {
 					// timeCapture = System.nanoTime();
-
-					// addRandomDataToSeries();
 					addScopeDataToSeries();
-
 					// timeElapsed = (long) (1.0e6/(System.nanoTime() -
 					// timeCapture));
 				}
@@ -478,8 +472,33 @@ public class MainScope extends Application {
 		flowPaneControls.setPadding(new Insets(15, 15, 15, 15));
 		flowPaneControls.setPrefWidth(200);
 		flowPaneControls.setMaxWidth(200);
+		
+		ToolBar toolbarChannelSelect = new ToolBar();
+		toolbarChannelSelect.setOrientation(Orientation.HORIZONTAL);
+		
+		RadioButton rdoChan_1 = new RadioButton("Ch1");
+		rdoChan_1.setOnAction((event) -> {
+			chanSelect = CHANNEL_1_SELECT;
+		});
+		
+		RadioButton rdoChan_2 = new RadioButton("Ch2");
+		rdoChan_2.setOnAction((event) -> {
+			chanSelect = CHANNEL_2_SELECT;
+		});
 
-		flowPaneControls.getChildren().addAll(btnStart, btnClear, spinVoltageScale, spinTimeScale);
+		ToggleGroup groupChanSelect = new ToggleGroup();
+		groupChanSelect.getToggles().addAll(rdoChan_1, rdoChan_2);
+		groupChanSelect.selectToggle(rdoChan_1);
+		
+        toolbarChannelSelect.getItems().addAll(
+                new Separator(),
+                rdoChan_1,
+                new Separator(),
+                rdoChan_2,
+                new Separator()
+            );
+
+		flowPaneControls.getChildren().addAll(btnStart, btnClear, spinVoltageScale, spinTimeScale, toolbarChannelSelect);
 		paneTimeControls.getChildren().add(flowPaneControls);
 
 		/*

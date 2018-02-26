@@ -127,7 +127,7 @@ public class DPScope extends Observable {
 
 	private final static byte ADC_ACQ = (byte) ((128 + ACQT * 8 + ADCS) & 0xff);
 
-	private static float usbSupplyVoltage = 0.0f;
+	private static float usbSupplyVoltage = 5.0f; // nominal voltage
 
 	private HidDevice hidDev;
 	private HidDeviceInfo devInfo;
