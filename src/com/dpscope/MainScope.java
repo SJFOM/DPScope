@@ -40,6 +40,8 @@ import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 
 public class MainScope extends Application {
@@ -243,7 +245,7 @@ public class MainScope extends Application {
 			try {
 				if (nextScopeData) {
 					nextScopeData = false;
-					myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
+					myScope.armScope();
 
 					// must query scope if its ready for readback
 					while (!isArmed) {
@@ -417,11 +419,6 @@ public class MainScope extends Application {
 				dataQ1.clear();
 			}
 		});
-
-		// Voltage division scaling controls
-//		ObservableList<String> listVoltageDivisionsText = FXCollections.observableArrayList(//
-//				DPScope.DIV_50_MV, DPScope.DIV_100_MV, DPScope.DIV_200_MV, //
-//				DPScope.DIV_500_MV, DPScope.DIV_1_V, DPScope.DIV_2_V);
 		
 		ObservableList<String> listVoltageDivisionsText = FXCollections.observableArrayList(DPScope.mapVoltageDivs.keySet());	
 		
@@ -440,6 +437,49 @@ public class MainScope extends Application {
 			yAxis.setUpperBound(5 * divScaler);
 			yAxis.setLowerBound(-5 * divScaler);
 			yAxis.setTickUnit(divScaler);
+
+			if (myScope != null) {
+				switch (newValue) {
+				case DPScope.DIV_2_V:
+					myScope.sample_shift_ch1 = (byte) 2;
+					myScope.sample_subtract_ch1 = (byte) 0;
+					myScope.comp_input_chan = (byte) 1;
+					myScope.triggerLevel = (byte) 255;
+					break;
+				case DPScope.DIV_1_V:
+					myScope.sample_shift_ch1 = (byte) 1;
+					myScope.sample_subtract_ch1 = (byte) 128;
+					myScope.comp_input_chan = (byte) 1;
+					myScope.triggerLevel = (byte) 128; // (192 - 64);
+					break;
+				case DPScope.DIV_500_MV:
+					myScope.sample_shift_ch1 = (byte) 0;
+					myScope.sample_subtract_ch1 = (byte) 192;
+					myScope.comp_input_chan = (byte) 1;
+					myScope.triggerLevel = (byte) 64; // (160 - 96);
+					break;
+				case DPScope.DIV_200_MV:
+					myScope.sample_shift_ch1 = (byte) 2;
+					myScope.sample_subtract_ch1 = (byte) 0;
+					myScope.comp_input_chan = (byte) 2;
+					myScope.triggerLevel = (byte) 255;
+					break;
+				case DPScope.DIV_100_MV:
+					myScope.sample_shift_ch1 = (byte) 1;
+					myScope.sample_subtract_ch1 = (byte) 128;
+					myScope.comp_input_chan = (byte) 2;
+					myScope.triggerLevel = (byte) 128; // (192 - 64);
+					break;
+				case DPScope.DIV_50_MV:
+					myScope.sample_shift_ch1 = (byte) 0;
+					myScope.sample_subtract_ch1 = (byte) 192;
+					myScope.comp_input_chan = (byte) 2;
+					myScope.triggerLevel = (byte) 64; // (160 - 96);
+					break;
+				default:
+					break;
+				}
+			}
 		});
 
 		// Time division scaling controls
@@ -453,25 +493,177 @@ public class MainScope extends Application {
 		spinTimeScale.setValueFactory(valueFactoryTimeDiv);
 		spinTimeScale.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
 		spinTimeScale.setPrefWidth(150);
-
+		
+		// Text to complement the selected time scale - as seen in the DPScope Windows application.
+		Text txtSamplingRate = new Text(DPScope.mapSamplingRates.get(valueFactoryTimeDiv.getValue()));
+		
 		spinTimeScale.valueProperty().addListener((obs, oldValue, newValue) -> {
-			double divScaler = DPScope.mapTimeDivs.get(newValue);
-//			xAxis.setUpperBound(5 * divScaler);
-//			xAxis.setLowerBound(-5 * divScaler);
-//			xAxis.setTickUnit(divScaler);
-		});
+			// double divScaler = DPScope.mapTimeDivs.get(newValue);
+			// xAxis.setUpperBound(5 * divScaler);
+			// xAxis.setLowerBound(-5 * divScaler);
+			// xAxis.setTickUnit(divScaler);
+			txtSamplingRate.setText(DPScope.mapSamplingRates.get(newValue));
 
-		BorderPane brdrScopeControls = new BorderPane();
-		brdrScopeControls.setTop(spinVoltageScale);
-		brdrScopeControls.setCenter(spinTimeScale);
-		brdrScopeControls.setStyle("-fx-border-color: red");
+			if (myScope != null) {
+
+				// TODO: Deal with RT/ET switching
+				/*
+				 * If ListIndex <= 5 And TimeBaseListIndex_old > 5 Then ' change from real time
+				 * to equivalent time TriggerAuto_old = TriggerAuto TriggerCH1_old = TriggerCH1
+				 * ' remember old setting so we can restore it when going back to real-time
+				 * sampling TriggerExt_old = TriggerExt ' remember old setting so we can restore
+				 * it when going back to real-time sampling
+				 * 
+				 * If TriggerAuto Then TriggerCH1 = True ' enforce triggered mode in equivalent
+				 * time mode TriggerAuto = False TriggerAuto.Enabled = False End If
+				 * 
+				 * If ListIndex > 5 And TimeBaseListIndex_old <= 5 Then ' change from equivalent
+				 * time to real time TriggerAuto.Enabled = True TriggerAuto = TriggerAuto_old
+				 * TriggerCH1 = TriggerCH1_old ' restore setting TriggerExt = TriggerExt_old End
+				 * If
+				 */
+				//TODO: add comments with sampling rate values
+				switch (newValue) {
+				case DPScope.DIV_5_US:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_ET;
+					myScope.sampleInterval = (byte) 1;
+					myScope.timeAxisScale = 0.000005d;
+					break;
+				case DPScope.DIV_10_US:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_ET;
+					myScope.sampleInterval = (byte) 2;
+					myScope.timeAxisScale = 0.00001d;
+					break;
+				case DPScope.DIV_20_US:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_ET;
+					myScope.sampleInterval = (byte) 4;
+					myScope.timeAxisScale = 0.00002d;
+					break;
+				case DPScope.DIV_50_US:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_ET;
+					myScope.sampleInterval = (byte) 10;
+					myScope.timeAxisScale = 0.00005d;
+					break;
+				case DPScope.DIV_100_US:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_ET;
+					myScope.sampleInterval = (byte) 20;
+					myScope.timeAxisScale = 0.0001d;
+					break;
+				case DPScope.DIV_200_US:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+					myScope.sampleInterval = (byte) 40;
+					myScope.timeAxisScale = 0.0002d;
+					break;
+				case DPScope.DIV_500_US: // 50 kSa/sec
+					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+					myScope.timeAxisScale = 0.0005d;
+					break;
+				case DPScope.DIV_1_MS:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+					myScope.timeAxisScale = 0.001d;
+					break;
+				case DPScope.DIV_2_MS:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+					myScope.timeAxisScale = 0.002d;
+					break;
+				case DPScope.DIV_5_MS:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+					myScope.timeAxisScale = 0.005d;
+					break;
+				case DPScope.DIV_10_MS:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+					myScope.timeAxisScale = 0.01d;
+					break;
+				case DPScope.DIV_20_MS:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+					myScope.timeAxisScale = 0.02d;
+					break;
+				case DPScope.DIV_50_MS:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+					myScope.timeAxisScale = 0.05d;
+					break;
+				case DPScope.DIV_100_MS:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+					myScope.timeAxisScale = 0.1d;
+					break;
+				case DPScope.DIV_200_MS:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+					myScope.timeAxisScale = 0.2d;
+					break;
+				case DPScope.DIV_500_MS:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+					myScope.timeAxisScale = 0.5d;
+					break;
+				case DPScope.DIV_1_S:
+					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+					myScope.timeAxisScale = 1.0d;
+					break;
+				default:
+					break;
+				}
+				
+				/*
+				 * Real time sampling uses a timer
+				 */
+				double tSample = 0.0d;
+				double counts  = 0.0d;
+				double preload = 0.0d;
+				
+				// equivalent to: If ListIndex >= 6 Then
+				if((myScope.samplingMode == DPScope.SAMPLE_MODE_RT) && (newValue != DPScope.DIV_200_US)) {
+					/*
+					 * empirical formula for necessary timer counts"
+					 * Counts = T_sample(usec) * 6 - 54
+					 * preload = 65536 - counts
+					 */
+				
+					if(myScope.timeAxisScale <= 0.05d) {
+						myScope.prescalerBypass = (byte) 1; // no prescaler
+						myScope.prescalerSelection = (byte) 0;
+						
+						tSample = (myScope.timeAxisScale * 1000000.0d) / 10; // in usec, but 10 samples/div
+						counts = tSample*6 - 54;
+						preload = 65536 - counts; //TODO: Tidy this up with constants
+					} else {
+						myScope.prescalerBypass = (byte) 1; // use prescaler for slow sample rates to prevent overflow
+						myScope.prescalerSelection = (byte) 6; // divide by 2^(6+1) = 128 - headroom uo to approx. 10 sec/div
+						
+						tSample = (myScope.timeAxisScale * 1000000.0d) / 10; // in usec, but 10 samples/div
+						counts = (tSample*6 - 54) / 128;
+						preload = 65536 - counts;
+					}
+				} else if(newValue == DPScope.DIV_500_US) { // 50 kSa/sec
+					// special case: alternated acquisition at 50 kSa/sec per channel
+					myScope.prescalerBypass = (byte) 1; // no prescaler
+					myScope.prescalerSelection = (byte) 0;
+					
+					tSample = 2 * (myScope.timeAxisScale * 1000000.0d) / 10; // in usec, but 10 samples/div
+					counts = tSample*6 - 54;
+					preload = 65536 - counts; //TODO: Tidy this up with constants
+				} else {
+					myScope.prescalerBypass = (byte) 1; // no prescaler
+					myScope.prescalerSelection = (byte) 0;
+					
+					myScope.timerPreloadHigh = (byte) 255; // so we don't get accidentally stuck with a super-slow counter
+					myScope.timerPreloadLow = (byte) 0;
+				}
+				
+				myScope.timerPreloadHigh = (byte) (preload / 256);
+				myScope.timerPreloadLow  = (byte) (preload % 256);
+				
+			}
+		});
 
 		FlowPane flowPaneControls = new FlowPane();
 		flowPaneControls.setHgap(10);
 		flowPaneControls.setVgap(20);
 		flowPaneControls.setPadding(new Insets(15, 15, 15, 15));
-		flowPaneControls.setPrefWidth(200);
-		flowPaneControls.setMaxWidth(200);
+		flowPaneControls.setPrefWidth(180);
+		flowPaneControls.setMaxWidth(180);
+		flowPaneControls.setAlignment(Pos.CENTER);
+//		flowPaneControls.setStyle("-fx-border-color: red");
+		// TODO: Set control panel scaling correctly when maximizing to full screen
+		
 		
 		ToolBar toolbarChannelSelect = new ToolBar();
 		toolbarChannelSelect.setOrientation(Orientation.HORIZONTAL);
@@ -498,7 +690,9 @@ public class MainScope extends Application {
                 new Separator()
             );
 
-		flowPaneControls.getChildren().addAll(btnStart, btnClear, spinVoltageScale, spinTimeScale, toolbarChannelSelect);
+		flowPaneControls.getChildren().addAll(btnStart, btnClear, 
+				spinVoltageScale, spinTimeScale, txtSamplingRate,
+				toolbarChannelSelect);
 		paneTimeControls.getChildren().add(flowPaneControls);
 
 		/*

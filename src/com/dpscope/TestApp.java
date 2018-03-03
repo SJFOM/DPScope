@@ -85,7 +85,7 @@ public class TestApp {
 
 	private static void runScan_ScopeMode() {
 		try {
-			myScope.armScope(DPScope.CH1_1, DPScope.CH2_1);
+			myScope.armScope();
 
 			// must query scope if its ready for readback
 			while (!isArmed) {

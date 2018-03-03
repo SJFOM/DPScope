@@ -100,6 +100,20 @@ public class DPScope extends Observable {
 	public final static String DIV_500_KSA = "500 kSa/sec ET";
 	public final static String DIV_1_MSA = "1 MSa/sec ET";
 	public final static String DIV_2_MSA = "2 MSa/sec ET";
+	
+	public final static LinkedHashMap<String, String> mapSamplingRates;
+	static {
+		mapSamplingRates = new LinkedHashMap<String, String>(17);
+		mapSamplingRates.put(DIV_1_S, DIV_10_SA);     mapSamplingRates.put(DIV_500_MS, DIV_20_SA);
+		mapSamplingRates.put(DIV_200_MS, DIV_50_SA);  mapSamplingRates.put(DIV_100_MS, DIV_100_SA);
+		mapSamplingRates.put(DIV_50_MS, DIV_200_SA);   mapSamplingRates.put(DIV_20_MS, DIV_500_SA);
+		mapSamplingRates.put(DIV_10_MS, DIV_1_KSA);   mapSamplingRates.put(DIV_5_MS, DIV_2_KSA);
+		mapSamplingRates.put(DIV_2_MS, DIV_5_KSA);    mapSamplingRates.put(DIV_1_MS, DIV_10_KSA);
+		mapSamplingRates.put(DIV_500_US, DIV_20_KSA);  mapSamplingRates.put(DIV_200_US, DIV_50_KSA);
+		mapSamplingRates.put(DIV_100_US, DIV_100_KSA);  mapSamplingRates.put(DIV_50_US, DIV_200_KSA);
+		mapSamplingRates.put(DIV_20_US, DIV_500_KSA);   mapSamplingRates.put(DIV_10_US, DIV_1_MSA);
+		mapSamplingRates.put(DIV_5_US, DIV_2_MSA); 
+	}
 
 	public final static int ALL_BLOCKS = 7;
 
@@ -108,25 +122,58 @@ public class DPScope extends Observable {
 	public final static int MAX_DATA_PER_CHANNEL = 211;
 
 	/*
-	 * ADC acquisition parameters - from MainModule.bas
-	 *
-	 * 5 (FOSC/16) is the fastest that seems to work (outside spec!); maybe use
-	 * 2 (FOSC/32) instead (still a bit outside spec) Public Const ADCS As Long
-	 * = 2
-	 *
-	 * minimal valid values: >= 3 for FOSC/64; >=5 (12 Tad) for FOSC/32; 7 (20
-	 * Tad) for FOSC/16 Fosc=48 MHz, ADCS 6 = FOSC/64, ACQT 3 = 6 Tad -->
-	 * Tacq_min = 64 * (11 + 6 + 2) / 48 = 25.33 us Fosc=48 MHz, ADCS 2 =
-	 * FOSC/32, ACQT 5 = 12 Tad --> Tacq_min = 32 * (11 + 12 + 2) / 48 = 16.67
-	 * us Fosc=48 MHz, ADCS 5 = FOSC/16, ACQT 7 = 20 Tad --> Tacq_min = 16 * (11
-	 * + 20 + 2) / 48 = 11.00 us Public Const ACQT As Long = 5
+	 * ARM parameters (watch out, VB array is 1-based, MikroC array is 0-based)
+	 * 1: command
+	 * 2: first channel to acquire
+	 * 3: second channel to acquire
+	 * 4: acquisition parameters (sample clock divider, acquisition time)
+	 * 5: timer 0 pre-load high
+	 * 6: timer 0 preload low
+	 * 7: timer 0 prescaler bypass (0 = use prescaler, 1 = bypass prescaler)
+	 * 8: timer 0 prescaler as power of 2 (7=div256, 0=div2): divide = 2^(PS+1)
 	 */
-
+	
 	private final static int ADCS = 2;
 	private final static int ACQT = 5;
 
 	private final static byte ADC_ACQ = (byte) ((128 + ACQT * 8 + ADCS) & 0xff);
-
+	
+	protected byte channel_1				= CH1_1;
+	protected byte channel_2				= CH2_1;
+	protected byte timerPreloadHigh 	 	= (byte) 255; // timer MSB - TimerPreloadHigh
+	protected byte timerPreloadLow 	 	= (byte) 10;  // timer MSB - TimerPreloadHigh
+	protected byte prescalerBypass 	 	= (byte) 1;   // prescaler bypass: 0 = use prescaler, 1 = bypass prescaler
+	protected byte prescalerSelection 	= (byte) 0;   // prescaler selection as power of 2 (7=div256, 0=div2)
+	
+	/*
+	 *  parameter for "software gain": 
+	 *  (shift,subtract) = (2,0), (1,128), or (0,192) for gain 1, 2, 4
+	 */
+	protected byte sample_shift_ch1 	 	= (byte) 2;   // sample shift first channel
+	protected byte sample_shift_ch2 	 	= (byte) 2;   // sample shift second channel
+	
+	protected byte sample_subtract_ch1 	= (byte) 0;   // sample subtract CH1
+	protected byte sample_subtract_ch2 	= (byte) 0;   // sample subtract CH2
+	
+	protected byte sample_subtract_delta_ch1 = (byte) 0; // 0 if probe attenuation false, else PROBE_1_TO_10_DELTA
+	protected byte sample_subtract_delta_ch2 = (byte) 0; // 0 if probe attenuation false, else PROBE_1_TO_10_DELTA
+	
+	// trigger mode (triggered or free running)
+	protected byte triggerAuto 			= (byte) 0;   // 0 = ch1 or ext. trigger, 1 = free running
+	protected byte triggerRising 		= (byte) 0;   // trigger polarity: 0 = falling edge, 1 = rising edge
+	protected boolean triggerExt 		= false;   	  // false = internal, true = external trigger
+	protected byte triggerLevel			= (byte) 255; // range of trigger threshold
+	
+	protected static byte SAMPLE_MODE_RT	= (byte) 0;	  // sampling mode Real Time
+	protected static byte SAMPLE_MODE_ET	= (byte) 1;   // sampling mode Equivalent Time
+	protected byte samplingMode 			= SAMPLE_MODE_RT;   // 0 = real time, 1 = equivalent time
+	
+	// TODO: Put these values in a list
+	protected double timeAxisScale		= 1.0d; 		  // value for scaling time axis
+	
+	protected byte sampleInterval 		= (byte) 0;   // equivalent time sample interval in 0.5usec increments
+	protected byte comp_input_chan 		= (byte) 1;   // trigger channel to use (1 = CH1 gain 1, 2 = CH1 gain 10, 3 = ext. trigger)
+	
 	private static float usbSupplyVoltage = 5.0f; // nominal voltage
 
 	private HidDevice hidDev;
@@ -418,55 +465,52 @@ public class DPScope extends Observable {
 	}
 
 	// CMD_ARM (5) - Sets all acquisition parameters and arms scope
-	/*
-	 * ' ARM parameters (watch out, VB array is 1-based, MikroC array is
-	 * 0-based) ' 1: command ' 2: first channel to acquire ' 3: second channel
-	 * to acquire ' 4: acquisition parameters (sample clock divider, acquisition
-	 * time) ' 5: timer 0 preload high ' 6: timer 0 preload low ' 7: timer 0
-	 * prescaler bypass (0 = use prescaler, 1 = bypass prescaler) ' 8: timer 0
-	 * prescaler as power of 2 (7=div256, 0=div2): divide = 2^(PS+1)
-	 */
-	public void armScope(byte ch1, byte ch2) {
+	public void armScope() {
 		actionQueue.add(new BootAction() {
 			@Override
 			public boolean go() throws Exception {
 				// TODO Auto-generated method stub
 				txBuf[0] = 0x05;
-				txBuf[1] = ch1; // channel1
-				txBuf[2] = ch2; // channel2
+				txBuf[1] = channel_1;
+				txBuf[2] = channel_2;
 				txBuf[3] = ADC_ACQ;
-				txBuf[4] = (byte) 255; // timer MSB - TimerPreloadHigh
-				txBuf[5] = (byte) 10; // timer LSB - TimerPreloadLow
-				txBuf[6] = (byte) 1; // prescaler bypass
-										// 0 = use prescaler
-										// 1 = bypass prescaler
-				txBuf[7] = 0x00; // prescaler selection as power of 2 (7=div256,
-									// 0=div2)
-				txBuf[8] = (byte) 2; // sample shift first channel
-				txBuf[9] = (byte) 2; // sample shift second channel
-				txBuf[10] = (byte) 0; // sample subtract first channel
-				txBuf[11] = (byte) 0; // sample subtract second channel
-				txBuf[12] = 0x00; // trigger source (0 = auto, 1 = triggered)
-				txBuf[13] = 0x00; // trigger polarity
-									// 0 = falling edge
-									// 1 = rising edge
+				txBuf[4] = timerPreloadHigh;
+				txBuf[5] = timerPreloadLow;
+				txBuf[6] = prescalerBypass;
+				txBuf[7] = prescalerSelection;
+				txBuf[8] = sample_shift_ch1;
+				txBuf[9] = sample_shift_ch2;
+				txBuf[10] = (byte) (sample_subtract_ch1 + sample_subtract_delta_ch1);
+				txBuf[11] = (byte) (sample_subtract_ch2 + sample_subtract_delta_ch2);
+				txBuf[12] = triggerAuto;
+				txBuf[13] = triggerRising;
 				txBuf[14] = 0x00; // trigger level MSB (currently not used)
-				txBuf[15] = 0x00; // trigger level LSB (only applicable if
-									// triggering on
-				// CH1, not for ext. trigger)
-				txBuf[16] = (byte) 0; // sampling mode:
-										// 0 = real time,
-										// 1 = equivalent time)
-				txBuf[17] = (byte) 2; // equivalent time sample interval in 0.5
-										// usec
-				// increments
+				
+				/*
+				 *  trigger level LSB (only applicable if triggering on CH1,
+				 *  not for ext. trigger)
+				 */
+				if(triggerExt) {
+					/*
+					 *  external trigger uses fixed threshold of approx. 1.5V
+					 *  (compatible with TTL, 5V CMOS and 3.3V CMOS) 
+					 */
+					txBuf[15] = (byte) ((1.5 / 5.0) * 256);
+				} else {
+					double trigVal = 256 - triggerLevel + sample_subtract_delta_ch1 / 2.0;
+					trigVal = (trigVal < 0) ? 0 : trigVal;
+					trigVal = (trigVal > 255) ? 255 : trigVal;
+					txBuf[15] = (byte) ((byte)trigVal & 0xff);
+				}
+
+				
+				txBuf[16] = samplingMode;   // sampling mode: 0 = real time, 1 = equivalent time
+				txBuf[17] = sampleInterval; // equivalent time sample interval in 0.5usec increments
 				txBuf[18] = (byte) (txBuf[17] >> 1); // equivalent time trigger
-				// stability check period (half
-				// of byte 17 value is a good
-				// choice)
-				txBuf[19] = (byte) 1; // trigger channel to use (1 = CH1 gain 1,
-										// 2 = CH1
-				// gain 10, 3 = ext. trigger)
+													// stability check period (half
+													// of byte 17 value is a good
+													// choice)
+				txBuf[19] = comp_input_chan; 
 				length = 20;
 				currCmd = Command.CMD_ARM;
 				sendNoWait();
@@ -739,8 +783,8 @@ public class DPScope extends Observable {
 				for (int i = 0; i < count; i++) {
 					// readADCDirect(CH_BATTERY, CH_BATTERY);
 					buildCmdReadAdc(CH_BATTERY, CH_BATTERY);
-					sendAndWait();
-					sendNoWait();
+					sendAndWait(); // either one works for one-off reads: wait vs no-wait
+//					sendNoWait();
 					avgVolts += getUSBVoltage();
 				}
 				actionQueue.remove();
@@ -769,7 +813,6 @@ public class DPScope extends Observable {
 
 	public void runScan_RollMode(byte ch1, byte ch2) {
 		run_RollMode = true;
-		setChannelsInUse(ch1, ch2);
 		startQueueIfStopped();
 		readADC(ch1, ch2);
 	}
@@ -858,6 +901,16 @@ public class DPScope extends Observable {
 	private void sendNoWait() {
 		hidDev.setOutputReport((byte) 0, txBuf, length);
 	}
+	
+	/***********
+	 * Setters *
+	 ***********/
+	
+
+	
+	/***********
+	 * Getters *
+	 ***********/
 
 	public int getSignalCh1() {
 		return signalCh1;
@@ -869,11 +922,6 @@ public class DPScope extends Observable {
 
 	public float getUSBVoltage() {
 		return usbSupplyVoltage;
-	}
-
-	private void setChannelsInUse(byte ch1, byte ch2) {
-		this.ch1 = ch1;
-		this.ch2 = ch2;
 	}
 
 	protected boolean isDeviceConnected() {
