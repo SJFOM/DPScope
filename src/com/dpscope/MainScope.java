@@ -20,6 +20,7 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
@@ -35,13 +36,12 @@ import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
-import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
-import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 
 public class MainScope extends Application {
@@ -58,8 +58,8 @@ public class MainScope extends Application {
 	private volatile static boolean nextScopeData = false;
 	
 	// Offsets which select which buffer bytes to read
-	private static final int CHANNEL_1_SELECT = 0;
-	private static final int CHANNEL_2_SELECT = 1;
+	private static final byte CHANNEL_1_SELECT = 0x01;
+	private static final byte CHANNEL_2_SELECT = 0x02;
 	private static int chanSelect = CHANNEL_1_SELECT;
 
 	// offset found by measuring P & G pins at rear of scope
@@ -90,6 +90,7 @@ public class MainScope extends Application {
 	private static final int MAX_DATA_POINTS = 500;
 	private int xSeriesData = 0;
 	private XYChart.Series<Number, Number> series1 = new XYChart.Series<>();
+	private XYChart.Series<Number, Number> series2 = new XYChart.Series<>();	
 	private ExecutorService executor;
 	private ConcurrentLinkedQueue<Number> dataQ1 = new ConcurrentLinkedQueue<>();
 
@@ -113,15 +114,11 @@ public class MainScope extends Application {
 		xAxis.setMinorTickVisible(false);
 
 		yAxis = new NumberAxis(-25, 25, 5);
+		yAxis.setCache(true); // TODO: check if performance benefit exists here
 		// yAxis.setAutoRanging(true);
 
 		// Create a LineChart
-		final LineChart<Number, Number> lineChart = new LineChart<Number, Number>(xAxis, yAxis) {
-			// Override to remove symbols on each data point
-			@Override
-			protected void dataItemAdded(Series<Number, Number> series, int itemIndex, Data<Number, Number> item) {
-			}
-		};
+		final LineChart<Number, Number> lineChart = new LineChart<Number, Number>(xAxis, yAxis) {};
 
 		lineChart.setAnimated(false);
 		lineChart.setLegendVisible(false);
@@ -130,13 +127,31 @@ public class MainScope extends Application {
 		// lineChart.setTitle("Animated Line Chart");
 		lineChart.setHorizontalGridLinesVisible(true);
 		lineChart.setPrefWidth(700);
+//		lineChart.setStyle("-fx-stroke-width: 1px;");
+		// Remove symbols on each data point
+		lineChart.setCreateSymbols(false);
 		// lineChart.setOpacity(0.8);
 
 		// Set Name for Series
-		series1.setName("Series 1");
-
+		series1.setName("Channel 1");
+		series2.setName("Channel 2");
+		
 		// Add Chart Series
 		lineChart.getData().add(series1);
+		lineChart.getData().add(series2);
+			
+		// Change the colour of series2
+		Node line = series2.getNode().lookup(".chart-series-line");
+
+		Color color = Color.BLUE; // or any other color
+
+		String rgb = String.format("%d, %d, %d",
+				(int) (color.getRed() * 255), 
+				(int) (color.getGreen() * 255), 
+				(int) (color.getBlue() * 255));
+
+		line.setStyle("-fx-stroke: rgba(" + rgb + ", 1.0);");
+
 
 		SplitPane spltPane = new SplitPane();
 		spltPane.setDividerPosition(0, 0.18);
@@ -188,6 +203,7 @@ public class MainScope extends Application {
 						});
 						btnConnect.setStyle("-fx-background-color: #99ffcc;");
 						myScope.checkUsbSupply();
+						
 					} else {
 						System.out.println("SampleController - No device present");
 						myScope = null;
@@ -204,6 +220,7 @@ public class MainScope extends Application {
 		bpaneRoot.setCenter(spltPane);
 
 		primaryStage.setScene(new Scene(bpaneRoot));
+		
 	}
 
 	@Override
@@ -315,11 +332,20 @@ public class MainScope extends Application {
 	private void addScopeDataToSeries() {
 		if (readBackDone) {
 			readBackDone = false;
-			series1.getData().clear();
 
-			int j = 0;
-			for (int i = chanSelect; i < DPScope.MAX_READABLE_SIZE; i += 2) {
-				series1.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i]*scaleFactorY));
+			if ((chanSelect &= CHANNEL_1_SELECT) > 0) {
+				series1.getData().clear();
+				int j = 0;
+				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i += 2) {
+					series1.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * scaleFactorY));
+				}
+			}
+			if ((chanSelect &= CHANNEL_2_SELECT) > 0) {
+				series2.getData().clear();
+				int j = 0;
+				for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i += 2) {
+					series2.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * scaleFactorY));
+				}
 			}
 			nextScopeData = true;
 		}
@@ -335,6 +361,12 @@ public class MainScope extends Application {
 			for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i++) {
 				series1.getData().add(new XYChart.Data<>(i, Math.random() - 0.5));
 			}
+			
+			series2.getData().clear();
+			for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i++) {
+				series2.getData().add(new XYChart.Data<>(i, Math.random() - 0.5));
+			}
+			
 			nextTestData = true;
 		}
 	}
@@ -392,6 +424,11 @@ public class MainScope extends Application {
 						AddScopeDataToQueue addScopeDataToQueue = new AddScopeDataToQueue();
 						executor.execute(addScopeDataToQueue);
 						prepareTimeline(1);
+						/*
+						 * Set default samplingMode and timeAxisScale values
+						 * */
+						myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+						myScope.timeAxisScale = 1.0d;
 					} else {
 						// Just add test data to scope instead
 						 AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
@@ -414,6 +451,9 @@ public class MainScope extends Application {
 		btnClear.setOnAction((event) -> {
 			if (!series1.getData().isEmpty()) {
 				series1.getData().clear();
+			}
+			if(!series2.getData().isEmpty()) {
+				series2.getData().clear();
 			}
 			if (!dataQ1.isEmpty()) {
 				dataQ1.clear();
@@ -602,6 +642,7 @@ public class MainScope extends Application {
 					break;
 				}
 				
+				
 				/*
 				 * Real time sampling uses a timer
 				 */
@@ -653,6 +694,7 @@ public class MainScope extends Application {
 				
 			}
 		});
+		
 
 		FlowPane flowPaneControls = new FlowPane();
 		flowPaneControls.setHgap(10);
@@ -670,17 +712,20 @@ public class MainScope extends Application {
 		
 		RadioButton rdoChan_1 = new RadioButton("Ch1");
 		rdoChan_1.setOnAction((event) -> {
-			chanSelect = CHANNEL_1_SELECT;
+			chanSelect ^= CHANNEL_1_SELECT;
 		});
 		
 		RadioButton rdoChan_2 = new RadioButton("Ch2");
 		rdoChan_2.setOnAction((event) -> {
-			chanSelect = CHANNEL_2_SELECT;
+			chanSelect ^= CHANNEL_2_SELECT;
 		});
+		
+		rdoChan_1.setSelected(true);
+		chanSelect = CHANNEL_1_SELECT;
 
-		ToggleGroup groupChanSelect = new ToggleGroup();
-		groupChanSelect.getToggles().addAll(rdoChan_1, rdoChan_2);
-		groupChanSelect.selectToggle(rdoChan_1);
+//		ToggleGroup groupChanSelect = new ToggleGroup();
+//		groupChanSelect.getToggles().addAll(rdoChan_1, rdoChan_2);
+//		groupChanSelect.selectToggle(rdoChan_1);
 		
         toolbarChannelSelect.getItems().addAll(
                 new Separator(),
