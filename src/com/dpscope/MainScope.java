@@ -143,7 +143,7 @@ public class MainScope extends Application {
 		// Change the colour of series2
 		Node line = series2.getNode().lookup(".chart-series-line");
 
-		Color color = Color.BLUE; // or any other color
+		Color color = Color.CYAN; // or any other color
 
 		String rgb = String.format("%d, %d, %d",
 				(int) (color.getRed() * 255), 
@@ -332,17 +332,16 @@ public class MainScope extends Application {
 	private void addScopeDataToSeries() {
 		if (readBackDone) {
 			readBackDone = false;
-
-			if ((chanSelect &= CHANNEL_1_SELECT) > 0) {
-				series1.getData().clear();
-				int j = 0;
+			series1.getData().clear();
+			series2.getData().clear();
+			
+			int j = 0;
+			if ((chanSelect & CHANNEL_1_SELECT) > 0) {
 				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i += 2) {
 					series1.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * scaleFactorY));
 				}
 			}
-			if ((chanSelect &= CHANNEL_2_SELECT) > 0) {
-				series2.getData().clear();
-				int j = 0;
+			if ((chanSelect & CHANNEL_2_SELECT) > 0) {
 				for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i += 2) {
 					series2.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * scaleFactorY));
 				}
@@ -356,17 +355,21 @@ public class MainScope extends Application {
 	 */
 	private void addTestDataToSeries() {
 		if (nextTestData) {
-			series1.getData().clear();
 			nextTestData = false;
-			for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i++) {
-				series1.getData().add(new XYChart.Data<>(i, Math.random() - 0.5));
-			}
-			
+			series1.getData().clear();
 			series2.getData().clear();
-			for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i++) {
-				series2.getData().add(new XYChart.Data<>(i, Math.random() - 0.5));
-			}
 			
+			if ((chanSelect & CHANNEL_1_SELECT) > 0) {
+				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i++) {
+					series1.getData().add(new XYChart.Data<>(i, Math.random() - 0.5));
+				}
+			}
+
+			if ((chanSelect & CHANNEL_2_SELECT) > 0) {
+				for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i++) {
+					series2.getData().add(new XYChart.Data<>(i, Math.random() - 0.5));
+				}
+			}
 			nextTestData = true;
 		}
 	}
