@@ -127,10 +127,10 @@ public class MainScope extends Application {
 		// lineChart.setTitle("Animated Line Chart");
 		lineChart.setHorizontalGridLinesVisible(true);
 		lineChart.setPrefWidth(700);
-//		lineChart.setStyle("-fx-stroke-width: 1px;");
 		// Remove symbols on each data point
 		lineChart.setCreateSymbols(false);
-		// lineChart.setOpacity(0.8);
+		 lineChart.setOpacity(0.8);
+		lineChart.getStyleClass().add("thick-chart");
 
 		// Set Name for Series
 		series1.setName("Channel 1");
@@ -231,6 +231,7 @@ public class MainScope extends Application {
 		stage.setWidth(800);
 		stage.setHeight(500);
 		init(stage);
+		stage.getScene().getStylesheets().add("com/dpscope/stylesheet.css");
 		stage.show();
 
 		executor = Executors.newCachedThreadPool(new ThreadFactory() {
@@ -337,11 +338,13 @@ public class MainScope extends Application {
 			
 			int j = 0;
 			if ((chanSelect & CHANNEL_1_SELECT) > 0) {
+				j = 0;
 				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i += 2) {
 					series1.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * scaleFactorY));
 				}
 			}
 			if ((chanSelect & CHANNEL_2_SELECT) > 0) {
+				j = 0;
 				for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i += 2) {
 					series2.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * scaleFactorY));
 				}
