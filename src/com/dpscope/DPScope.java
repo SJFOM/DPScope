@@ -138,10 +138,10 @@ public class DPScope extends Observable {
 
 	private final static byte ADC_ACQ = (byte) ((128 + ACQT * 8 + ADCS) & 0xff);
 	
-	protected byte channel_1				= CH1_1;
-	protected byte channel_2				= CH2_1;
-	protected byte timerPreloadHigh 	 	= (byte) 255; // timer MSB - TimerPreloadHigh
-	protected byte timerPreloadLow 	 	= (byte) 10;  // timer MSB - TimerPreloadHigh
+	protected byte channel_1			= CH1_1;
+	protected byte channel_2			= CH2_1;
+	protected byte timerPreloadHigh 	= (byte) (255 & 0xff); // timer MSB - TimerPreloadHigh
+	protected byte timerPreloadLow 	 	= (byte) (10 & 0xff);  // timer LSB - TimerPreloadHigh
 	protected byte prescalerBypass 	 	= (byte) 1;   // prescaler bypass: 0 = use prescaler, 1 = bypass prescaler
 	protected byte prescalerSelection 	= (byte) 0;   // prescaler selection as power of 2 (7=div256, 0=div2)
 	
@@ -159,10 +159,10 @@ public class DPScope extends Observable {
 	protected byte sample_subtract_delta_ch2 = (byte) 0; // 0 if probe attenuation false, else PROBE_1_TO_10_DELTA
 	
 	// trigger mode (triggered or free running)
-	protected byte triggerAuto 			= (byte) 0;   // 0 = ch1 or ext. trigger, 1 = free running
-	protected byte triggerRising 		= (byte) 0;   // trigger polarity: 0 = falling edge, 1 = rising edge
-	protected boolean triggerExt 		= false;   	  // false = internal, true = external trigger
-	protected byte triggerLevel			= (byte) 255; // range of trigger threshold
+	protected byte 		triggerAuto 	= (byte) 0;   // 0 = ch1 or ext. trigger, 1 = free running
+	protected byte 		triggerRising 	= (byte) 0;   // trigger polarity: 0 = falling edge, 1 = rising edge
+	protected boolean 	triggerExt 		= false;   	  // false = internal, true = external trigger
+	protected byte 		triggerLevel	= (byte) (255 & 0xff); // range of trigger threshold
 	
 	protected static byte SAMPLE_MODE_RT	= (byte) 0;	  // sampling mode Real Time
 	protected static byte SAMPLE_MODE_ET	= (byte) 1;   // sampling mode Equivalent Time
@@ -511,7 +511,7 @@ public class DPScope extends Observable {
 													// of byte 17 value is a good
 													// choice)
 				txBuf[19] = comp_input_chan; 
-				length = 20;
+				length = 0x14; // 20 in decimal
 				currCmd = Command.CMD_ARM;
 				sendNoWait();
 				return false;
