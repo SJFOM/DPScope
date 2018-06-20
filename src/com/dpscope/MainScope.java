@@ -56,7 +56,7 @@ public class MainScope extends Application {
 	private volatile static boolean isDone = false;
 	private volatile static boolean isArmed = false;
 	private volatile static boolean nextScopeData = false;
-	
+
 	// Offsets which select which buffer bytes to read
 	private static final byte CHANNEL_1_SELECT = 0x01;
 	private static final byte CHANNEL_2_SELECT = 0x02;
@@ -90,7 +90,7 @@ public class MainScope extends Application {
 	private static final int MAX_DATA_POINTS = 500;
 	private int xSeriesData = 0;
 	private XYChart.Series<Number, Number> series1 = new XYChart.Series<>();
-	private XYChart.Series<Number, Number> series2 = new XYChart.Series<>();	
+	private XYChart.Series<Number, Number> series2 = new XYChart.Series<>();
 	private ExecutorService executor;
 	private ConcurrentLinkedQueue<Number> dataQ1 = new ConcurrentLinkedQueue<>();
 
@@ -118,7 +118,8 @@ public class MainScope extends Application {
 		// yAxis.setAutoRanging(true);
 
 		// Create a LineChart
-		final LineChart<Number, Number> lineChart = new LineChart<Number, Number>(xAxis, yAxis) {};
+		final LineChart<Number, Number> lineChart = new LineChart<Number, Number>(xAxis, yAxis) {
+		};
 
 		lineChart.setAnimated(false);
 		lineChart.setLegendVisible(false);
@@ -135,23 +136,20 @@ public class MainScope extends Application {
 		// Set Name for Series
 		series1.setName("Channel 1");
 		series2.setName("Channel 2");
-		
+
 		// Add Chart Series
 		lineChart.getData().add(series1);
 		lineChart.getData().add(series2);
-			
+
 		// Change the colour of series2
 		Node line = series2.getNode().lookup(".chart-series-line");
 
 		Color color = Color.CYAN; // or any other color
 
-		String rgb = String.format("%d, %d, %d",
-				(int) (color.getRed() * 255), 
-				(int) (color.getGreen() * 255), 
+		String rgb = String.format("%d, %d, %d", (int) (color.getRed() * 255), (int) (color.getGreen() * 255),
 				(int) (color.getBlue() * 255));
 
 		line.setStyle("-fx-stroke: rgba(" + rgb + ", 1.0);");
-
 
 		SplitPane spltPane = new SplitPane();
 		spltPane.setDividerPosition(0, 0.18);
@@ -185,7 +183,15 @@ public class MainScope extends Application {
 									actualSupplyVoltage = (float) (parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0]
 											+ vUsbOffset);
 									supplyVoltageRatio = actualSupplyVoltage / DPScope.NOMINAL_SUPPLY;
-									scaleFactorY = (float) (supplyVoltageRatio * 25 / 12 / 2.55);
+									
+									/*
+									 * full ADC range is 255 steps (8 bit) and covers 5V; we are using only slightly less than half
+									 * range for display, i.e. 12 units out of possible 25 --> factor 25/12
+									 * full range is 255 and we have want to scale values 0...100 for full screen height --> 100/255 = 1/2.55
+									 * scope is trimmed so 0V results in ADC value 128 (mid scale), which on screen should be scaled at 50
+									 * */
+//									scaleFactorY = (float) (supplyVoltageRatio * 25 / 12 / 2.55);
+									scaleFactorY = (float) (supplyVoltageRatio / 2 / 2.55);
 									System.out.println("USB supply voltage: " + actualSupplyVoltage + " Volts");
 									System.out.println("supplyVoltageRatio: " + supplyVoltageRatio);
 									System.out.println("scaleFactorY: " + scaleFactorY);
@@ -203,7 +209,7 @@ public class MainScope extends Application {
 						});
 						btnConnect.setStyle("-fx-background-color: #99ffcc;");
 						myScope.checkUsbSupply();
-						
+
 					} else {
 						System.out.println("SampleController - No device present");
 						myScope = null;
@@ -220,7 +226,7 @@ public class MainScope extends Application {
 		bpaneRoot.setCenter(spltPane);
 
 		primaryStage.setScene(new Scene(bpaneRoot));
-		
+
 	}
 
 	@Override
@@ -251,11 +257,11 @@ public class MainScope extends Application {
 		// AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
 		// executor.execute(addTestDataToQueue);
 
-//		AddScopeDataToQueue addScopeDataToQueue = new AddScopeDataToQueue();
-//		executor.execute(addScopeDataToQueue);
+		// AddScopeDataToQueue addScopeDataToQueue = new AddScopeDataToQueue();
+		// executor.execute(addScopeDataToQueue);
 
 		// -- Prepare Timeline
-//		prepareTimeline();
+		// prepareTimeline();
 	}
 
 	private class AddScopeDataToQueue implements Runnable {
@@ -335,13 +341,21 @@ public class MainScope extends Application {
 			readBackDone = false;
 			series1.getData().clear();
 			series2.getData().clear();
-			
+
 			int j = 0;
 			if ((chanSelect & CHANNEL_1_SELECT) > 0) {
 				j = 0;
+				double tmpBuf[] = new double[212];
 				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i += 2) {
 					series1.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * scaleFactorY));
+					tmpBuf[j] = (double) (myScope.scopeBuffer[i] * scaleFactorY);
 				}
+//				System.out.println("mean ch1: " + myScope.scopeBuffer[i-2] * scaleFactorY);
+//				List b = Arrays.asList(ArrayUtils.toObject(tmpBuf));
+//				System.out.println("Max: " + Collections.max(b));
+//				System.out.println("Min: " + Collections.min(b));
+//				System.out.println("pk-pk: " + (Math.abs((double) Collections.min(b)) + Math.abs((double)Collections.max(b))));
+				
 			}
 			if ((chanSelect & CHANNEL_2_SELECT) > 0) {
 				j = 0;
@@ -361,7 +375,7 @@ public class MainScope extends Application {
 			nextTestData = false;
 			series1.getData().clear();
 			series2.getData().clear();
-			
+
 			if ((chanSelect & CHANNEL_1_SELECT) > 0) {
 				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i++) {
 					series1.getData().add(new XYChart.Data<>(i, Math.random() - 0.5));
@@ -385,7 +399,7 @@ public class MainScope extends Application {
 				@Override
 				public void handle(long now) {
 					// timeCapture = System.nanoTime();
-					 addTestDataToSeries();
+					addTestDataToSeries();
 					// timeElapsed = (long) (1.0e6/(System.nanoTime() -
 					// timeCapture));
 				}
@@ -425,22 +439,22 @@ public class MainScope extends Application {
 			public void handle(ActionEvent e) {
 				if (btnStart.getText().equals("Start".toUpperCase())) {
 					btnStart.setText("Stop".toUpperCase());
-					if (myScope != null) {						
+					if (myScope != null) {
 						nextScopeData = true;
 						AddScopeDataToQueue addScopeDataToQueue = new AddScopeDataToQueue();
 						executor.execute(addScopeDataToQueue);
 						prepareTimeline(1);
 						/*
 						 * Set default samplingMode and timeAxisScale values
-						 * */
+						 */
 						myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
-						myScope.timeAxisScale = 1.0d;
-						scopeSetupTimebase(DPScope.DIV_1_S);
+						myScope.timeAxisScale = 0.0005d;
+						scopeSetupTimebase(DPScope.DIV_500_US);
 					} else {
 						// Just add test data to scope instead
-						 AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
-						 executor.execute(addTestDataToQueue);
-						 prepareTimeline(0);
+						AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
+						executor.execute(addTestDataToQueue);
+						prepareTimeline(0);
 					}
 					btnClear.setDisable(true);
 					myAnimationTimer.start();
@@ -459,16 +473,17 @@ public class MainScope extends Application {
 			if (!series1.getData().isEmpty()) {
 				series1.getData().clear();
 			}
-			if(!series2.getData().isEmpty()) {
+			if (!series2.getData().isEmpty()) {
 				series2.getData().clear();
 			}
 			if (!dataQ1.isEmpty()) {
 				dataQ1.clear();
 			}
 		});
-		
-		ObservableList<String> listVoltageDivisionsText = FXCollections.observableArrayList(DPScope.mapVoltageDivs.keySet());	
-		
+
+		ObservableList<String> listVoltageDivisionsText = FXCollections
+				.observableArrayList(DPScope.mapVoltageDivs.keySet());
+
 		SpinnerValueFactory<String> valueFactoryVoltageDiv = //
 				new SpinnerValueFactory.ListSpinnerValueFactory<String>(listVoltageDivisionsText);
 		valueFactoryVoltageDiv.setValue(DPScope.DIV_2_V);
@@ -478,7 +493,6 @@ public class MainScope extends Application {
 		spinVoltageScale.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_VERTICAL);
 		spinVoltageScale.setPrefWidth(150);
 
-		
 		spinVoltageScale.valueProperty().addListener((obs, oldValue, newValue) -> {
 			double divScaler = (double) DPScope.mapVoltageDivs.get(newValue);
 			yAxis.setUpperBound(5 * divScaler);
@@ -534,16 +548,17 @@ public class MainScope extends Application {
 
 		SpinnerValueFactory<String> valueFactoryTimeDiv = //
 				new SpinnerValueFactory.ListSpinnerValueFactory<String>(listTimeDivisionsText);
-		valueFactoryTimeDiv.setValue(DPScope.DIV_1_S);
+		valueFactoryTimeDiv.setValue(DPScope.DIV_500_US);
 
 		final Spinner<String> spinTimeScale = new Spinner<String>();
 		spinTimeScale.setValueFactory(valueFactoryTimeDiv);
 		spinTimeScale.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
 		spinTimeScale.setPrefWidth(150);
-		
-		// Text to complement the selected time scale - as seen in the DPScope Windows application.
+
+		// Text to complement the selected time scale - as seen in the DPScope Windows
+		// application.
 		Text txtSamplingRate = new Text(DPScope.mapSamplingRates.get(valueFactoryTimeDiv.getValue()));
-		
+
 		spinTimeScale.valueProperty().addListener((obs, oldValue, newValue) -> {
 			// double divScaler = DPScope.mapTimeDivs.get(newValue);
 			// xAxis.setUpperBound(5 * divScaler);
@@ -554,40 +569,46 @@ public class MainScope extends Application {
 			if (myScope != null) {
 
 				// TODO: Deal with RT/ET switching in the VB code below
-				
-//	            If ListIndex <= 5 And TimeBaseListIndex_old > 5 Then ' change from real time to equivalent time
-//	                    TriggerAuto_old = TriggerAuto
-//	                    TriggerCH1_old = TriggerCH1 ' remember old setting so we can restore it when going back to real-time sampling
-//	                    TriggerExt_old = TriggerExt ' remember old setting so we can restore it when going back to real-time sampling
-//	                    
-//	                    If TriggerAuto Then TriggerCH1 = True ' enforce triggered mode in equivalent time mode
-//	                    TriggerAuto = False
-//	                    TriggerAuto.Enabled = False
-//	            End If
-//	                
-//	            If ListIndex > 5 And TimeBaseListIndex_old <= 5 Then ' change from equivalent time to real time
-//	                    TriggerAuto.Enabled = True	-> This is a GUI input where the options are Auto, CH1 or external		
-//	                    TriggerAuto = TriggerAuto_old
-//	                    TriggerCH1 = TriggerCH1_old ' restore setting
-//	                    TriggerExt = TriggerExt_old
-//	            End If
-	                
+
+				// If ListIndex <= 5 And TimeBaseListIndex_old > 5 Then ' change from real time
+				// to equivalent time
+				// TriggerAuto_old = TriggerAuto
+				// TriggerCH1_old = TriggerCH1 ' remember old setting so we can restore it when
+				// going back to real-time sampling
+				// TriggerExt_old = TriggerExt ' remember old setting so we can restore it when
+				// going back to real-time sampling
+				//
+				// If TriggerAuto Then TriggerCH1 = True ' enforce triggered mode in equivalent
+				// time mode
+				// TriggerAuto = False
+				// TriggerAuto.Enabled = False
+				// End If
+				//
+				// If ListIndex > 5 And TimeBaseListIndex_old <= 5 Then ' change from equivalent
+				// time to real time
+				// TriggerAuto.Enabled = True -> This is a GUI input where the options are Auto,
+				// CH1 or external
+				// TriggerAuto = TriggerAuto_old
+				// TriggerCH1 = TriggerCH1_old ' restore setting
+				// TriggerExt = TriggerExt_old
+				// End If
+
 				// These are all set for ScopeMode (vs Rollmode)
-//			    TriggerAuto.Enabled = True
-//			    TriggerCH1.Enabled = True
-//			    TriggerExt.Enabled = True
-//			    TriggerRising.Enabled = True
-//			    TriggerFalling.Enabled = True
-				
+				// TriggerAuto.Enabled = True
+				// TriggerCH1.Enabled = True
+				// TriggerExt.Enabled = True
+				// TriggerRising.Enabled = True
+				// TriggerFalling.Enabled = True
+
 				// which are initialized with the following values from MainModule.bas
-//		        .TriggerAuto_old = True
-//		        .TriggerCH1_old = False
-//		        .TriggerExt_old = False
-				
+				// .TriggerAuto_old = True
+				// .TriggerCH1_old = False
+				// .TriggerExt_old = False
+
 				// OK, this is more just like - if you were in ET mode then swap back to RT mode
-				// Doesn't need to do anything if you're already in RT mode (which is the default really..).
-				
-				
+				// Doesn't need to do anything if you're already in RT mode (which is the
+				// default really..).
+
 				/*
 				 * If ListIndex <= 5 And TimeBaseListIndex_old > 5 Then ' change from real time
 				 * to equivalent time TriggerAuto_old = TriggerAuto TriggerCH1_old = TriggerCH1
@@ -603,7 +624,7 @@ public class MainScope extends Application {
 				 * TriggerCH1 = TriggerCH1_old ' restore setting TriggerExt = TriggerExt_old End
 				 * If
 				 */
-				//TODO: add comments with sampling rate values
+				// TODO: add comments with sampling rate values
 				switch (newValue) {
 				case DPScope.DIV_5_US:
 					myScope.samplingMode = DPScope.SAMPLE_MODE_ET;
@@ -630,12 +651,12 @@ public class MainScope extends Application {
 					myScope.sampleInterval = (byte) 20;
 					myScope.timeAxisScale = 0.0001d;
 					break;
-				case DPScope.DIV_200_US:
+				case DPScope.DIV_200_US: // 50 kSa/sec
 					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
 					myScope.sampleInterval = (byte) 40;
 					myScope.timeAxisScale = 0.0002d;
 					break;
-				case DPScope.DIV_500_US: // 50 kSa/sec
+				case DPScope.DIV_500_US:
 					myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
 					myScope.timeAxisScale = 0.0005d;
 					break;
@@ -682,11 +703,10 @@ public class MainScope extends Application {
 				default:
 					break;
 				}
-				
-				scopeSetupTimebase((String)newValue);
+
+				scopeSetupTimebase((String) newValue);
 			}
 		});
-				
 
 		FlowPane flowPaneControls = new FlowPane();
 		flowPaneControls.setHgap(10);
@@ -695,40 +715,32 @@ public class MainScope extends Application {
 		flowPaneControls.setPrefWidth(180);
 		flowPaneControls.setMaxWidth(180);
 		flowPaneControls.setAlignment(Pos.CENTER);
-//		flowPaneControls.setStyle("-fx-border-color: red");
+		// flowPaneControls.setStyle("-fx-border-color: red");
 		// TODO: Set control panel scaling correctly when maximizing to full screen
-		
-		
+
 		ToolBar toolbarChannelSelect = new ToolBar();
 		toolbarChannelSelect.setOrientation(Orientation.HORIZONTAL);
-		
+
 		RadioButton rdoChan_1 = new RadioButton("Ch1");
 		rdoChan_1.setOnAction((event) -> {
 			chanSelect ^= CHANNEL_1_SELECT;
 		});
-		
+
 		RadioButton rdoChan_2 = new RadioButton("Ch2");
 		rdoChan_2.setOnAction((event) -> {
 			chanSelect ^= CHANNEL_2_SELECT;
 		});
-		
+
 		rdoChan_1.setSelected(true);
 		chanSelect = CHANNEL_1_SELECT;
 
-//		ToggleGroup groupChanSelect = new ToggleGroup();
-//		groupChanSelect.getToggles().addAll(rdoChan_1, rdoChan_2);
-//		groupChanSelect.selectToggle(rdoChan_1);
-		
-        toolbarChannelSelect.getItems().addAll(
-                new Separator(),
-                rdoChan_1,
-                new Separator(),
-                rdoChan_2,
-                new Separator()
-            );
+		// ToggleGroup groupChanSelect = new ToggleGroup();
+		// groupChanSelect.getToggles().addAll(rdoChan_1, rdoChan_2);
+		// groupChanSelect.selectToggle(rdoChan_1);
 
-		flowPaneControls.getChildren().addAll(btnStart, btnClear, 
-				spinVoltageScale, spinTimeScale, txtSamplingRate,
+		toolbarChannelSelect.getItems().addAll(new Separator(), rdoChan_1, new Separator(), rdoChan_2, new Separator());
+
+		flowPaneControls.getChildren().addAll(btnStart, btnClear, spinVoltageScale, spinTimeScale, txtSamplingRate,
 				toolbarChannelSelect);
 		paneTimeControls.getChildren().add(flowPaneControls);
 
@@ -744,10 +756,9 @@ public class MainScope extends Application {
 		// final MenuButton menuFiltering = new MenuButton();
 		final ChoiceBox<Object> choiceFiltering = new ChoiceBox<Object>();
 		choiceFiltering.setMinWidth(100);
-		choiceFiltering.getItems()
-				.addAll("None", new Separator(), "Hamming", "Hanning", "Blackman");
+		choiceFiltering.getItems().addAll("None", new Separator(), "Hamming", "Hanning", "Blackman");
 		choiceFiltering.getSelectionModel().selectFirst();
-		
+
 		choiceFiltering.valueProperty().addListener((obs, oldValue, newValue) -> {
 			System.out.println(newValue);
 		});
@@ -785,64 +796,62 @@ public class MainScope extends Application {
 		return tbpControls;
 
 	}
-	
+
 	/*
-	 * Set up the timing parameters for the scope
-	 * Better to have this as a separate function as it needs to be called
-	 * every time the scope is initialized and thus shouldn't rely on a gui interface
-	 * callback
-	 * */
+	 * Set up the timing parameters for the scope Better to have this as a separate
+	 * function as it needs to be called every time the scope is initialized and
+	 * thus shouldn't rely on a gui interface callback
+	 */
 	private void scopeSetupTimebase(String newValue) {
 		/*
 		 * Real time sampling uses a timer
 		 */
 		double tSample = 0.0d;
-		double counts  = 0.0d;
+		double counts = 0.0d;
 		double preload = 0.0d;
-		
+
 		// equivalent to: If ListIndex >= 6 Then
-		if((myScope.samplingMode == DPScope.SAMPLE_MODE_RT) && (newValue != DPScope.DIV_200_US)) {
+		if ((myScope.samplingMode == DPScope.SAMPLE_MODE_RT) && (newValue != DPScope.DIV_200_US)) {
 			/*
-			 * empirical formula for necessary timer counts"
-			 * Counts = T_sample(usec) * 6 - 54
+			 * empirical formula for necessary timer counts Counts = T_sample(usec) * 6 - 54
 			 * preload = 65536 - counts
 			 */
-		
-			if(myScope.timeAxisScale <= 0.05d) {
-				myScope.prescalerBypass = (byte) 1; // no prescaler
-				myScope.prescalerSelection = (byte) 0;
-				
+
+			if (myScope.timeAxisScale <= (double) 0.05d) {
+				myScope.prescalerBypass 	= (byte) 1; // no prescaler
+				myScope.prescalerSelection 	= (byte) 0;
+
 				tSample = (myScope.timeAxisScale * 1000000.0d) / 10; // in usec, but 10 samples/div
 				counts = tSample * 6 - 54;
-				preload = 65536 - counts; //TODO: Tidy this up with constants
+				preload = 65536 - counts; // TODO: Tidy this up with constants
 			} else {
-				// TODO: Change bypass to 1 to make it work and have it like old code...
-				myScope.prescalerBypass = (byte) 0; // use prescaler for slow sample rates to prevent overflow
-				myScope.prescalerSelection = (byte) 6; // divide by 2^(6+1) = 128 - headroom up to approx. 10 sec/div
-				
+				myScope.prescalerBypass 	= (byte) 0; // use prescaler (i.e. don't bypass) for slow sample rates to prevent overflow
+				myScope.prescalerSelection 	= (byte) 6; // divide by 2^(6+1) = 128 - headroom up to approx. 10 sec/div
+
 				tSample = (myScope.timeAxisScale * 1000000.0d) / 10; // in usec, but 10 samples/div
-				counts = (tSample*6 - 54) / 128;
+				counts = (tSample * 6 - 54) / 128;
 				preload = 65536 - counts;
 			}
-		} else if(newValue == DPScope.DIV_500_US) { // 50 kSa/sec
+		} else if (newValue == DPScope.DIV_500_US) { // 50 kSa/sec
 			// special case: alternated acquisition at 50 kSa/sec per channel
 			myScope.prescalerBypass = (byte) 1; // no prescaler
 			myScope.prescalerSelection = (byte) 0;
-			
+
 			tSample = 2 * (myScope.timeAxisScale * 1000000.0d) / 10; // in usec, but 10 samples/div
-			counts = tSample*6 - 54;
-			preload = 65536 - counts; //TODO: Tidy this up with constants
+			counts = tSample * 6 - 54;
+			preload = 65536 - counts; // TODO: Tidy this up with constants
 		} else {
 			myScope.prescalerBypass = (byte) 1; // no prescaler
 			myScope.prescalerSelection = (byte) 0;
-			
-			myScope.timerPreloadHigh = (byte) (255 & 0xff); // so we don't get accidentally stuck with a super-slow counter
+
+			myScope.timerPreloadHigh = (byte) (255 & 0xff); // so we don't get accidentally stuck with a super-slow
+															// counter
 			myScope.timerPreloadLow = (byte) 0;
 		}
-		
-		myScope.timerPreloadHigh = (byte) ((int)(preload / 256) & 0xff);
-		myScope.timerPreloadLow  = (byte) ((int)(preload % 256) & 0xff);
-		
+
+		myScope.timerPreloadHigh = (byte) ((int) (preload / 256) & 0xff);
+		myScope.timerPreloadLow = (byte) ((int) (preload % 256) & 0xff);
+
 	}
 
 	private boolean disconnectScope() {

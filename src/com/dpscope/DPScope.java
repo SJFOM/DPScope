@@ -159,9 +159,9 @@ public class DPScope extends Observable {
 	protected byte sample_subtract_delta_ch2 = (byte) 0; // 0 if probe attenuation false, else PROBE_1_TO_10_DELTA
 	
 	// trigger mode (triggered or free running)
-	protected byte 		triggerAuto 	= (byte) 0;   // 0 = ch1 or ext. trigger, 1 = free running
-	protected byte 		triggerRising 	= (byte) 0;   // trigger polarity: 0 = falling edge, 1 = rising edge
-	protected boolean 	triggerExt 		= false;   	  // false = internal, true = external trigger
+	protected boolean 	triggerAuto 	= true;   		// false = ch1 or ext. trigger, true = free running
+	protected byte 		triggerRising 	= (byte) 0;   	// trigger polarity: 0 = falling edge, 1 = rising edge
+	protected boolean 	triggerExt 		= false;   	  	// false = internal, true = external trigger
 	protected byte 		triggerLevel	= (byte) (255 & 0xff); // range of trigger threshold
 	
 	protected static byte SAMPLE_MODE_RT	= (byte) 0;	  // sampling mode Real Time
@@ -482,7 +482,7 @@ public class DPScope extends Observable {
 				txBuf[9] = sample_shift_ch2;
 				txBuf[10] = (byte) (sample_subtract_ch1 + sample_subtract_delta_ch1);
 				txBuf[11] = (byte) (sample_subtract_ch2 + sample_subtract_delta_ch2);
-				txBuf[12] = triggerAuto;
+				txBuf[12] = (byte) ((triggerAuto == true) ? 0x00 : 0x01);
 				txBuf[13] = triggerRising;
 				txBuf[14] = 0x00; // trigger level MSB (currently not used)
 				
