@@ -1,0 +1,8 @@
+To-do:
+- get amplitude scaling sorted - partly sorted with manual scaling
+- Get channels working for high sampling frequencies (50ksa/ALT)
+- Adjustable vertical offset available for both channels
+
+Bugs:
+- 50ms/div onwards (faster) don't work - checked against Windows version - same result
+- 

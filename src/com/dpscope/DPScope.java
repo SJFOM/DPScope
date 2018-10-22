@@ -149,8 +149,8 @@ public class DPScope extends Observable {
 	 *  parameter for "software gain": 
 	 *  (shift,subtract) = (2,0), (1,128), or (0,192) for gain 1, 2, 4
 	 */
-	protected byte sample_shift_ch1 	 	= (byte) 2;   // sample shift first channel
-	protected byte sample_shift_ch2 	 	= (byte) 2;   // sample shift second channel
+	protected byte sample_shift_ch1 	= (byte) 2;   // sample shift first channel
+	protected byte sample_shift_ch2 	= (byte) 2;   // sample shift second channel
 	
 	protected byte sample_subtract_ch1 	= (byte) 0;   // sample subtract CH1
 	protected byte sample_subtract_ch2 	= (byte) 0;   // sample subtract CH2

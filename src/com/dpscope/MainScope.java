@@ -345,10 +345,10 @@ public class MainScope extends Application {
 			int j = 0;
 			if ((chanSelect & CHANNEL_1_SELECT) > 0) {
 				j = 0;
-				double tmpBuf[] = new double[212];
+//				double tmpBuf[] = new double[212];
 				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i += 2) {
 					series1.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * scaleFactorY));
-					tmpBuf[j] = (double) (myScope.scopeBuffer[i] * scaleFactorY);
+//					tmpBuf[j] = (double) (myScope.scopeBuffer[i] * scaleFactorY);
 				}
 //				System.out.println("mean ch1: " + myScope.scopeBuffer[i-2] * scaleFactorY);
 //				List b = Arrays.asList(ArrayUtils.toObject(tmpBuf));
@@ -504,36 +504,48 @@ public class MainScope extends Application {
 				case DPScope.DIV_2_V:
 					myScope.sample_shift_ch1 = (byte) 2;
 					myScope.sample_subtract_ch1 = (byte) 0;
+					myScope.sample_shift_ch2 = (byte) 2;
+					myScope.sample_subtract_ch2 = (byte) 0;
 					myScope.comp_input_chan = (byte) 1;
 					myScope.triggerLevel = (byte) 255;
 					break;
 				case DPScope.DIV_1_V:
 					myScope.sample_shift_ch1 = (byte) 1;
 					myScope.sample_subtract_ch1 = (byte) 128;
+					myScope.sample_shift_ch2 = (byte) 1;
+					myScope.sample_subtract_ch2 = (byte) 128;
 					myScope.comp_input_chan = (byte) 1;
 					myScope.triggerLevel = (byte) 128; // (192 - 64);
 					break;
 				case DPScope.DIV_500_MV:
 					myScope.sample_shift_ch1 = (byte) 0;
 					myScope.sample_subtract_ch1 = (byte) 192;
+					myScope.sample_shift_ch2 = (byte) 0;
+					myScope.sample_subtract_ch2 = (byte) 192;
 					myScope.comp_input_chan = (byte) 1;
 					myScope.triggerLevel = (byte) 64; // (160 - 96);
 					break;
 				case DPScope.DIV_200_MV:
 					myScope.sample_shift_ch1 = (byte) 2;
 					myScope.sample_subtract_ch1 = (byte) 0;
+					myScope.sample_shift_ch2 = (byte) 2;
+					myScope.sample_subtract_ch2 = (byte) 0;
 					myScope.comp_input_chan = (byte) 2;
 					myScope.triggerLevel = (byte) 255;
 					break;
 				case DPScope.DIV_100_MV:
 					myScope.sample_shift_ch1 = (byte) 1;
 					myScope.sample_subtract_ch1 = (byte) 128;
+					myScope.sample_shift_ch2 = (byte) 1;
+					myScope.sample_subtract_ch2 = (byte) 128;
 					myScope.comp_input_chan = (byte) 2;
 					myScope.triggerLevel = (byte) 128; // (192 - 64);
 					break;
 				case DPScope.DIV_50_MV:
 					myScope.sample_shift_ch1 = (byte) 0;
 					myScope.sample_subtract_ch1 = (byte) 192;
+					myScope.sample_shift_ch2 = (byte) 0;
+					myScope.sample_subtract_ch2 = (byte) 192;
 					myScope.comp_input_chan = (byte) 2;
 					myScope.triggerLevel = (byte) 64; // (160 - 96);
 					break;
