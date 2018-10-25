@@ -1,5 +1,5 @@
 To-do:
-- get amplitude scaling sorted - partly sorted with manual scaling
+- get amplitude scaling sorted - partly sorted with manual scaling - different scaling values retain original value
 - Get channels working for high sampling frequencies (50ksa/ALT)
 - Adjustable vertical offset available for both channels
 
