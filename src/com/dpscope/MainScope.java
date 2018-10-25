@@ -1,5 +1,6 @@
 package com.dpscope;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Observable;
 import java.util.Observer;
@@ -29,6 +30,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Control;
+import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Spinner;
@@ -44,7 +46,9 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
-public class MainScope extends Application {
+@SuppressWarnings("restriction")
+public class MainScope extends Application
+{
 
 	/*
 	 * Scope controls
@@ -72,6 +76,7 @@ public class MainScope extends Application {
 	private static float actualSupplyVoltage = 0.0f;
 	private static float supplyVoltageRatio = 0.0f;
 	private static float scaleFactorY = 0.0f;
+	private static boolean hasConnectedOnce = false;
 
 	/*
 	 * Testing variables
@@ -89,7 +94,7 @@ public class MainScope extends Application {
 	 */
 	private static final int MAX_DATA_POINTS = 500;
 	private int xSeriesData = 0;
-	private XYChart.Series<Number, Number> series1 = new XYChart.Series<>();
+	private volatile XYChart.Series<Number, Number> series1 = new XYChart.Series<>();
 	private XYChart.Series<Number, Number> series2 = new XYChart.Series<>();
 	private ExecutorService executor;
 	private ConcurrentLinkedQueue<Number> dataQ1 = new ConcurrentLinkedQueue<>();
@@ -103,7 +108,8 @@ public class MainScope extends Application {
 	 * Main body of code
 	 */
 
-	private void init(Stage primaryStage) {
+	private void init(Stage primaryStage)
+	{
 
 		// 211 / 10.55 = 20 divisions
 		xAxis = new NumberAxis(0, DPScope.MAX_DATA_PER_CHANNEL, 10.55);
@@ -114,11 +120,12 @@ public class MainScope extends Application {
 		xAxis.setMinorTickVisible(false);
 
 		yAxis = new NumberAxis(-25, 25, 5);
-		yAxis.setCache(true); // TODO: check if performance benefit exists here
+		yAxis.setCache(true); // Very slight performance boost possible here by caching as bitmap
 		// yAxis.setAutoRanging(true);
 
 		// Create a LineChart
-		final LineChart<Number, Number> lineChart = new LineChart<Number, Number>(xAxis, yAxis) {
+		final LineChart<Number, Number> lineChart = new LineChart<Number, Number>(xAxis, yAxis)
+		{
 		};
 
 		lineChart.setAnimated(false);
@@ -160,48 +167,67 @@ public class MainScope extends Application {
 		BorderPane bpaneRoot = new BorderPane();
 
 		JFXButton btnConnect = new JFXButton("Connect".toUpperCase());
+		Label lblNotfication = new Label("");
 
 		btnConnect.setStyle("-fx-background-color: #f64863;");
 
-		btnConnect.setOnAction(new EventHandler<ActionEvent>() {
+		btnConnect.setOnAction(new EventHandler<ActionEvent>()
+		{
 			@Override
-			public void handle(ActionEvent e) {
+			public void handle(ActionEvent e)
+			{
 
-				if (btnConnect.getText().equals("Connect".toUpperCase())) {
+				if (btnConnect.getText().equals("Connect".toUpperCase()))
+				{
 					myScope = new DPScope();
-					if (myScope.isDevicePresent()) {
+					if (myScope.isDevicePresent())
+					{
+						lblNotfication.setText("");
 						btnConnect.setText("Disconnect".toUpperCase());
 						myScope.connect();
-						myScope.addObserver(new Observer() {
+						myScope.addObserver(new Observer()
+						{
 							@Override
-							public void update(Observable o, Object arg) {
+							public void update(Observable o, Object arg)
+							{
 								// TODO Auto-generated method stub
 								parsedMap = (LinkedHashMap<Command, float[]>) arg;
-								if (parsedMap.containsKey(Command.CMD_READADC)) {
+								if (parsedMap.containsKey(Command.CMD_READADC))
+								{
 									lastData[0] = parsedMap.get(Command.CMD_READADC)[0];
-								} else if (parsedMap.containsKey(Command.CMD_CHECK_USB_SUPPLY)) {
-									actualSupplyVoltage = (float) (parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0]
-											+ vUsbOffset);
+								}
+								else if (parsedMap.containsKey(Command.CMD_CHECK_USB_SUPPLY))
+								{
+									actualSupplyVoltage = (float) (parsedMap.get(Command.CMD_CHECK_USB_SUPPLY)[0] + vUsbOffset);
 									supplyVoltageRatio = actualSupplyVoltage / DPScope.NOMINAL_SUPPLY;
-									
+
 									/*
-									 * full ADC range is 255 steps (8 bit) and covers 5V; we are using only slightly less than half
-									 * range for display, i.e. 12 units out of possible 25 --> factor 25/12
-									 * full range is 255 and we have want to scale values 0...100 for full screen height --> 100/255 = 1/2.55
-									 * scope is trimmed so 0V results in ADC value 128 (mid scale), which on screen should be scaled at 50
-									 * */
+									 * full ADC range is 255 steps (8 bit) and covers 5V; we are using only slightly
+									 * less than half range for display, i.e. 12 units out of possible 25 --> factor
+									 * 25/12 full range is 255 and we have want to scale values 0...100 for full
+									 * screen height --> 100/255 = 1/2.55 scope is trimmed so 0V results in ADC
+									 * value 128 (mid scale), which on screen should be scaled at 50
+									 */
 //									scaleFactorY = (float) (supplyVoltageRatio * 25 / 12 / 2.55);
 									scaleFactorY = (float) (supplyVoltageRatio / 2 / 2.55);
 									System.out.println("USB supply voltage: " + actualSupplyVoltage + " Volts");
 									System.out.println("supplyVoltageRatio: " + supplyVoltageRatio);
 									System.out.println("scaleFactorY: " + scaleFactorY);
-								} else if (parsedMap.containsKey(Command.CMD_READBACK)) {
+								}
+								else if (parsedMap.containsKey(Command.CMD_READBACK))
+								{
 									readBackDone = true;
-								} else if (parsedMap.containsKey(Command.CMD_DONE)) {
+								}
+								else if (parsedMap.containsKey(Command.CMD_DONE))
+								{
 									isDone = true;
-								} else if (parsedMap.containsKey(Command.CMD_ARM)) {
+								}
+								else if (parsedMap.containsKey(Command.CMD_ARM))
+								{
 									isArmed = true;
-								} else if (parsedMap.containsKey(Command.EVT_DEVICE_REMOVED)) {
+								}
+								else if (parsedMap.containsKey(Command.EVT_DEVICE_REMOVED))
+								{
 									disconnectScope();
 								}
 								parsedMap.clear();
@@ -210,11 +236,16 @@ public class MainScope extends Application {
 						btnConnect.setStyle("-fx-background-color: #99ffcc;");
 						myScope.checkUsbSupply();
 
-					} else {
+					}
+					else
+					{
 						System.out.println("SampleController - No device present");
+						lblNotfication.setText("No scope present");
 						myScope = null;
 					}
-				} else {
+				}
+				else
+				{
 					btnConnect.setText("Connect".toUpperCase());
 					disconnectScope();
 					btnConnect.setStyle("-fx-background-color: #f64863;");
@@ -222,7 +253,11 @@ public class MainScope extends Application {
 			}
 		});
 
-		bpaneRoot.setTop(btnConnect);
+		FlowPane flowStatusBar = new FlowPane();
+		flowStatusBar.setHgap(20);
+		flowStatusBar.setVgap(20);
+		flowStatusBar.getChildren().addAll(btnConnect, lblNotfication);
+		bpaneRoot.setTop(flowStatusBar);
 		bpaneRoot.setCenter(spltPane);
 
 		primaryStage.setScene(new Scene(bpaneRoot));
@@ -230,7 +265,8 @@ public class MainScope extends Application {
 	}
 
 	@Override
-	public void start(Stage stage) {
+	public void start(Stage stage)
+	{
 		stage.setTitle("DPScope");
 		stage.setMinWidth(900);
 		stage.setMinHeight(400);
@@ -240,9 +276,11 @@ public class MainScope extends Application {
 		stage.getScene().getStylesheets().add("com/dpscope/stylesheet.css");
 		stage.show();
 
-		executor = Executors.newCachedThreadPool(new ThreadFactory() {
+		executor = Executors.newCachedThreadPool(new ThreadFactory()
+		{
 			@Override
-			public Thread newThread(Runnable r) {
+			public Thread newThread(Runnable r)
+			{
 				Thread thread = new Thread(r);
 				// ensures thread is shutdown when application exits
 				thread.setDaemon(true);
@@ -264,15 +302,20 @@ public class MainScope extends Application {
 		// prepareTimeline();
 	}
 
-	private class AddScopeDataToQueue implements Runnable {
-		public void run() {
-			try {
-				if (nextScopeData) {
+	private class AddScopeDataToQueue implements Runnable
+	{
+		public void run()
+		{
+			try
+			{
+				if (nextScopeData)
+				{
 					nextScopeData = false;
 					myScope.armScope();
 
 					// must query scope if its ready for readback
-					while (!isArmed) {
+					while (!isArmed)
+					{
 						// TODO: Should be able to remove/reduce this timeout -
 						// test
 						// Thread.sleep(10);
@@ -283,7 +326,8 @@ public class MainScope extends Application {
 					isArmed = false;
 					// System.out.println("TestApp - Scope Armed");
 					myScope.queryIfDone();
-					while (!isDone) {
+					while (!isDone)
+					{
 						// TODO: Should be able to remove/reduce this timeout -
 						// test
 						// Thread.sleep(5);
@@ -294,40 +338,53 @@ public class MainScope extends Application {
 
 					// System.out.println("TestApp - Ready for read!");
 
-					for (int i = 0; i < DPScope.ALL_BLOCKS; i++) {
+					for (int i = 0; i < DPScope.ALL_BLOCKS; i++)
+					{
 						myScope.readBack(i);
 					}
 				}
 
 				executor.execute(this);
-			} catch (InterruptedException ex) {
+			}
+			catch (InterruptedException ex)
+			{
 				ex.printStackTrace();
 			}
 		}
 	}
 
-	private class AddRandomDataToQueue implements Runnable {
-		public void run() {
-			try {
+	private class AddRandomDataToQueue implements Runnable
+	{
+		public void run()
+		{
+			try
+			{
 				// add a item of random data to queue
 				dataQ1.add(Math.random());
 				// dataQ1.add(timeElapsed);
 
 				Thread.sleep(10);
 				executor.execute(this);
-			} catch (InterruptedException ex) {
+			}
+			catch (InterruptedException ex)
+			{
 				ex.printStackTrace();
 			}
 		}
 	}
 
-	private class AddTestDataToQueue implements Runnable {
-		public void run() {
-			try {
+	private class AddTestDataToQueue implements Runnable
+	{
+		public void run()
+		{
+			try
+			{
 				Thread.sleep(10);
 				nextTestData = true;
 				executor.execute(this);
-			} catch (InterruptedException ex) {
+			}
+			catch (InterruptedException ex)
+			{
 				ex.printStackTrace();
 			}
 		}
@@ -336,31 +393,57 @@ public class MainScope extends Application {
 	/**
 	 * Function for adding DPScope data to plot
 	 */
-	private void addScopeDataToSeries() {
-		if (readBackDone) {
+//	static int timeCount = 0;
+//	long timeKeep[] = new long[20];
+
+	private synchronized void addScopeDataToSeries()
+	{
+		if (readBackDone)
+		{
 			readBackDone = false;
 			series1.getData().clear();
 			series2.getData().clear();
+			double tmpScaleFactor = scaleFactorY;
+			
+			if(yAxis.getTickUnit() < 1.0)
+			{
+				tmpScaleFactor *= 2 * yAxis.getTickUnit();
+			} 
+			else 
+			{
+				tmpScaleFactor /= (double) (5.0 / yAxis.getTickUnit());
+			}
+
+//			long startTime = System.nanoTime();
 
 			int j = 0;
-			if ((chanSelect & CHANNEL_1_SELECT) > 0) {
-				j = 0;
-//				double tmpBuf[] = new double[212];
-				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i += 2) {
-					series1.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * scaleFactorY));
-//					tmpBuf[j] = (double) (myScope.scopeBuffer[i] * scaleFactorY);
+			if ((chanSelect & CHANNEL_1_SELECT) > 0)
+			{
+				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i += 2)
+				{
+					series1.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * tmpScaleFactor));
 				}
-//				System.out.println("mean ch1: " + myScope.scopeBuffer[i-2] * scaleFactorY);
-//				List b = Arrays.asList(ArrayUtils.toObject(tmpBuf));
-//				System.out.println("Max: " + Collections.max(b));
-//				System.out.println("Min: " + Collections.min(b));
-//				System.out.println("pk-pk: " + (Math.abs((double) Collections.min(b)) + Math.abs((double)Collections.max(b))));
-				
 			}
-			if ((chanSelect & CHANNEL_2_SELECT) > 0) {
+
+//			long stopTime = System.nanoTime();
+//			timeKeep[timeCount++] = (long) (stopTime - startTime);
+//			if (timeCount == 20)
+//			{
+//				long sum = 0;
+//				for (long d : timeKeep)
+//					sum += d;
+//				long meanTime = (long) (sum / timeCount);
+//				System.out.println("Series1 avg fill time: " + meanTime / 1.0e6 + " ms");
+//				timeCount = 0;
+//			}
+//			System.out.println("Filled series1 in: " + (stopTime - startTime)/1e6 + " ms");
+
+			if ((chanSelect & CHANNEL_2_SELECT) > 0)
+			{
 				j = 0;
-				for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i += 2) {
-					series2.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * scaleFactorY));
+				for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i += 2)
+				{
+					series2.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * tmpScaleFactor));
 				}
 			}
 			nextScopeData = true;
@@ -370,20 +453,26 @@ public class MainScope extends Application {
 	/**
 	 * Function for adding random data to plot
 	 */
-	private void addTestDataToSeries() {
-		if (nextTestData) {
+	private void addTestDataToSeries()
+	{
+		if (nextTestData)
+		{
 			nextTestData = false;
 			series1.getData().clear();
 			series2.getData().clear();
 
-			if ((chanSelect & CHANNEL_1_SELECT) > 0) {
-				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i++) {
+			if ((chanSelect & CHANNEL_1_SELECT) > 0)
+			{
+				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i++)
+				{
 					series1.getData().add(new XYChart.Data<>(i, Math.random() - 0.5));
 				}
 			}
 
-			if ((chanSelect & CHANNEL_2_SELECT) > 0) {
-				for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i++) {
+			if ((chanSelect & CHANNEL_2_SELECT) > 0)
+			{
+				for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i++)
+				{
 					series2.getData().add(new XYChart.Data<>(i, Math.random() - 0.5));
 				}
 			}
@@ -392,22 +481,30 @@ public class MainScope extends Application {
 	}
 
 	// -- Timeline gets called in the JavaFX Main thread
-	private void prepareTimeline(int dataSeries) {
+	private void prepareTimeline(int dataSeries)
+	{
 		// Every frame to take any data from queue and add to chart
-		if (dataSeries == 0) {
-			myAnimationTimer = new AnimationTimer() {
+		if (dataSeries == 0)
+		{
+			myAnimationTimer = new AnimationTimer()
+			{
 				@Override
-				public void handle(long now) {
+				public void handle(long now)
+				{
 					// timeCapture = System.nanoTime();
 					addTestDataToSeries();
 					// timeElapsed = (long) (1.0e6/(System.nanoTime() -
 					// timeCapture));
 				}
 			};
-		} else if (dataSeries == 1) {
-			myAnimationTimer = new AnimationTimer() {
+		}
+		else if (dataSeries == 1)
+		{
+			myAnimationTimer = new AnimationTimer()
+			{
 				@Override
-				public void handle(long now) {
+				public void handle(long now)
+				{
 					// timeCapture = System.nanoTime();
 					addScopeDataToSeries();
 					// timeElapsed = (long) (1.0e6/(System.nanoTime() -
@@ -417,7 +514,8 @@ public class MainScope extends Application {
 		}
 	}
 
-	private TabPane tabPaneControls() {
+	private TabPane tabPaneControls()
+	{
 
 		/*
 		 * TIME control panel
@@ -434,23 +532,33 @@ public class MainScope extends Application {
 		btnClear.setMinWidth(70);
 		// btnClear.setMinWidth(Control.USE_PREF_SIZE);
 
-		btnStart.setOnAction(new EventHandler<ActionEvent>() {
+		btnStart.setOnAction(new EventHandler<ActionEvent>()
+		{
 			@Override
-			public void handle(ActionEvent e) {
-				if (btnStart.getText().equals("Start".toUpperCase())) {
+			public void handle(ActionEvent e)
+			{
+				if (btnStart.getText().equals("Start".toUpperCase()))
+				{
 					btnStart.setText("Stop".toUpperCase());
-					if (myScope != null) {
+					if (myScope != null)
+					{
 						nextScopeData = true;
 						AddScopeDataToQueue addScopeDataToQueue = new AddScopeDataToQueue();
 						executor.execute(addScopeDataToQueue);
 						prepareTimeline(1);
-						/*
-						 * Set default samplingMode and timeAxisScale values
-						 */
-						myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
-						myScope.timeAxisScale = 0.0005d;
-						scopeSetupTimebase(DPScope.DIV_500_US);
-					} else {
+						if (hasConnectedOnce == false)
+						{
+							/*
+							 * Set default samplingMode and timeAxisScale values
+							 */
+							myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
+							myScope.timeAxisScale = 0.0005d;
+							scopeSetupTimebase(DPScope.DIV_500_US);
+							hasConnectedOnce = true;
+						}
+					}
+					else
+					{
 						// Just add test data to scope instead
 						AddTestDataToQueue addTestDataToQueue = new AddTestDataToQueue();
 						executor.execute(addTestDataToQueue);
@@ -458,7 +566,9 @@ public class MainScope extends Application {
 					}
 					btnClear.setDisable(true);
 					myAnimationTimer.start();
-				} else {
+				}
+				else
+				{
 					btnStart.setText("Start".toUpperCase());
 					nextScopeData = false;
 					btnClear.setDisable(false);
@@ -469,20 +579,23 @@ public class MainScope extends Application {
 		});
 
 		// Experimenting with lambda expressions
-		btnClear.setOnAction((event) -> {
-			if (!series1.getData().isEmpty()) {
+		btnClear.setOnAction((event) ->
+		{
+			if (!series1.getData().isEmpty())
+			{
 				series1.getData().clear();
 			}
-			if (!series2.getData().isEmpty()) {
+			if (!series2.getData().isEmpty())
+			{
 				series2.getData().clear();
 			}
-			if (!dataQ1.isEmpty()) {
+			if (!dataQ1.isEmpty())
+			{
 				dataQ1.clear();
 			}
 		});
 
-		ObservableList<String> listVoltageDivisionsText = FXCollections
-				.observableArrayList(DPScope.mapVoltageDivs.keySet());
+		ObservableList<String> listVoltageDivisionsText = FXCollections.observableArrayList(DPScope.mapVoltageDivs.keySet());
 
 		SpinnerValueFactory<String> valueFactoryVoltageDiv = //
 				new SpinnerValueFactory.ListSpinnerValueFactory<String>(listVoltageDivisionsText);
@@ -493,14 +606,17 @@ public class MainScope extends Application {
 		spinVoltageScale.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_VERTICAL);
 		spinVoltageScale.setPrefWidth(150);
 
-		spinVoltageScale.valueProperty().addListener((obs, oldValue, newValue) -> {
+		spinVoltageScale.valueProperty().addListener((obs, oldValue, newValue) ->
+		{
 			double divScaler = (double) DPScope.mapVoltageDivs.get(newValue);
-			yAxis.setUpperBound(5 * divScaler);
-			yAxis.setLowerBound(-5 * divScaler);
+			yAxis.setUpperBound(5.0 * divScaler);
+			yAxis.setLowerBound(-5.0 * divScaler);
 			yAxis.setTickUnit(divScaler);
 
-			if (myScope != null) {
-				switch (newValue) {
+			if (myScope != null)
+			{
+				switch (newValue)
+				{
 				case DPScope.DIV_2_V:
 					myScope.sample_shift_ch1 = (byte) 2;
 					myScope.sample_subtract_ch1 = (byte) 0;
@@ -571,14 +687,16 @@ public class MainScope extends Application {
 		// application.
 		Text txtSamplingRate = new Text(DPScope.mapSamplingRates.get(valueFactoryTimeDiv.getValue()));
 
-		spinTimeScale.valueProperty().addListener((obs, oldValue, newValue) -> {
+		spinTimeScale.valueProperty().addListener((obs, oldValue, newValue) ->
+		{
 			// double divScaler = DPScope.mapTimeDivs.get(newValue);
 			// xAxis.setUpperBound(5 * divScaler);
 			// xAxis.setLowerBound(-5 * divScaler);
 			// xAxis.setTickUnit(divScaler);
 			txtSamplingRate.setText(DPScope.mapSamplingRates.get(newValue));
 
-			if (myScope != null) {
+			if (myScope != null)
+			{
 
 				// TODO: Deal with RT/ET switching in the VB code below
 
@@ -637,7 +755,8 @@ public class MainScope extends Application {
 				 * If
 				 */
 				// TODO: add comments with sampling rate values
-				switch (newValue) {
+				switch (newValue)
+				{
 				case DPScope.DIV_5_US:
 					myScope.samplingMode = DPScope.SAMPLE_MODE_ET;
 					myScope.sampleInterval = (byte) 1;
@@ -734,12 +853,14 @@ public class MainScope extends Application {
 		toolbarChannelSelect.setOrientation(Orientation.HORIZONTAL);
 
 		RadioButton rdoChan_1 = new RadioButton("Ch1");
-		rdoChan_1.setOnAction((event) -> {
+		rdoChan_1.setOnAction((event) ->
+		{
 			chanSelect ^= CHANNEL_1_SELECT;
 		});
 
 		RadioButton rdoChan_2 = new RadioButton("Ch2");
-		rdoChan_2.setOnAction((event) -> {
+		rdoChan_2.setOnAction((event) ->
+		{
 			chanSelect ^= CHANNEL_2_SELECT;
 		});
 
@@ -752,8 +873,7 @@ public class MainScope extends Application {
 
 		toolbarChannelSelect.getItems().addAll(new Separator(), rdoChan_1, new Separator(), rdoChan_2, new Separator());
 
-		flowPaneControls.getChildren().addAll(btnStart, btnClear, spinVoltageScale, spinTimeScale, txtSamplingRate,
-				toolbarChannelSelect);
+		flowPaneControls.getChildren().addAll(btnStart, btnClear, spinVoltageScale, spinTimeScale, txtSamplingRate, toolbarChannelSelect);
 		paneTimeControls.getChildren().add(flowPaneControls);
 
 		/*
@@ -771,7 +891,8 @@ public class MainScope extends Application {
 		choiceFiltering.getItems().addAll("None", new Separator(), "Hamming", "Hanning", "Blackman");
 		choiceFiltering.getSelectionModel().selectFirst();
 
-		choiceFiltering.valueProperty().addListener((obs, oldValue, newValue) -> {
+		choiceFiltering.valueProperty().addListener((obs, oldValue, newValue) ->
+		{
 			System.out.println(newValue);
 		});
 
@@ -814,7 +935,8 @@ public class MainScope extends Application {
 	 * function as it needs to be called every time the scope is initialized and
 	 * thus shouldn't rely on a gui interface callback
 	 */
-	private void scopeSetupTimebase(String newValue) {
+	private void scopeSetupTimebase(String newValue)
+	{
 		/*
 		 * Real time sampling uses a timer
 		 */
@@ -823,28 +945,35 @@ public class MainScope extends Application {
 		double preload = 0.0d;
 
 		// equivalent to: If ListIndex >= 6 Then
-		if ((myScope.samplingMode == DPScope.SAMPLE_MODE_RT) && (newValue != DPScope.DIV_200_US)) {
+		if ((myScope.samplingMode == DPScope.SAMPLE_MODE_RT) && (newValue != DPScope.DIV_200_US))
+		{
 			/*
 			 * empirical formula for necessary timer counts Counts = T_sample(usec) * 6 - 54
 			 * preload = 65536 - counts
 			 */
 
-			if (myScope.timeAxisScale <= (double) 0.05d) {
-				myScope.prescalerBypass 	= (byte) 1; // no prescaler
-				myScope.prescalerSelection 	= (byte) 0;
+			if (myScope.timeAxisScale <= (double) 0.05d)
+			{
+				myScope.prescalerBypass = (byte) 1; // no prescaler
+				myScope.prescalerSelection = (byte) 0;
 
 				tSample = (myScope.timeAxisScale * 1000000.0d) / 10; // in usec, but 10 samples/div
 				counts = tSample * 6 - 54;
 				preload = 65536 - counts; // TODO: Tidy this up with constants
-			} else {
-				myScope.prescalerBypass 	= (byte) 0; // use prescaler (i.e. don't bypass) for slow sample rates to prevent overflow
-				myScope.prescalerSelection 	= (byte) 6; // divide by 2^(6+1) = 128 - headroom up to approx. 10 sec/div
+			}
+			else
+			{
+				myScope.prescalerBypass = (byte) 0; // use prescaler (i.e. don't bypass) for slow sample rates to
+													// prevent overflow
+				myScope.prescalerSelection = (byte) 6; // divide by 2^(6+1) = 128 - headroom up to approx. 10 sec/div
 
 				tSample = (myScope.timeAxisScale * 1000000.0d) / 10; // in usec, but 10 samples/div
 				counts = (tSample * 6 - 54) / 128;
 				preload = 65536 - counts;
 			}
-		} else if (newValue == DPScope.DIV_500_US) { // 50 kSa/sec
+		}
+		else if (newValue == DPScope.DIV_500_US)
+		{ // 50 kSa/sec
 			// special case: alternated acquisition at 50 kSa/sec per channel
 			myScope.prescalerBypass = (byte) 1; // no prescaler
 			myScope.prescalerSelection = (byte) 0;
@@ -852,7 +981,9 @@ public class MainScope extends Application {
 			tSample = 2 * (myScope.timeAxisScale * 1000000.0d) / 10; // in usec, but 10 samples/div
 			counts = tSample * 6 - 54;
 			preload = 65536 - counts; // TODO: Tidy this up with constants
-		} else {
+		}
+		else
+		{
 			myScope.prescalerBypass = (byte) 1; // no prescaler
 			myScope.prescalerSelection = (byte) 0;
 
@@ -866,8 +997,10 @@ public class MainScope extends Application {
 
 	}
 
-	private boolean disconnectScope() {
-		if (myScope != null) {
+	private boolean disconnectScope()
+	{
+		if (myScope != null)
+		{
 			myScope.disconnect();
 			myScope.deleteObservers();
 			myScope = null;
@@ -878,14 +1011,17 @@ public class MainScope extends Application {
 	}
 
 	@Override
-	public void stop() {
+	public void stop()
+	{
 		// System.out.println("App is closing");
-		if (disconnectScope()) {
+		if (disconnectScope())
+		{
 			System.out.println("Disconnecting scope...");
 		}
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args)
+	{
 		launch(args);
 	}
 }
