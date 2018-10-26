@@ -63,6 +63,8 @@ public class MainScope extends Application
 	private volatile static boolean isDone = false;
 	private volatile static boolean isArmed = false;
 	private volatile static boolean nextScopeData = false;
+	private volatile static boolean skipRead = false;
+	private volatile static boolean altSampling = false;
 
 	// Offsets which select which buffer bytes to read
 	private static final byte CHANNEL_1_SELECT = 0x01;
@@ -79,8 +81,17 @@ public class MainScope extends Application
 	private final String strStart = "START";
 	private final String strStop = "STOP";
 
+	private final String strAuto = "Auto";
+	private final String strCh1 = "CH1";
+	private final String strExt = "Ext.";
+
 	final Button btnStart = new Button(strStart);
 	final Button btnClear = new Button(strClear);
+
+	private Slider sldrOffset_Trig = new Slider();
+
+	private RadioButton rdoChan_2 = new RadioButton("Ch2");
+	private Slider sldrOffset_Chan2 = new Slider();
 
 	/*
 	 * Scope reading variables
@@ -119,7 +130,7 @@ public class MainScope extends Application
 
 	private double yAxisOffset_Chan1 = 0.0d;
 	private double yAxisOffset_Chan2 = 0.0d;
-	
+
 	private final double LINE_WIDTH = 0.5d;
 
 	/*
@@ -173,7 +184,7 @@ public class MainScope extends Application
 
 		String rgb = String.format("%d, %d, %d", (int) (color.getRed() * 255), (int) (color.getGreen() * 255),
 				(int) (color.getBlue() * 255));
-		
+
 		line.setStyle("-fx-stroke: rgba(" + rgb + ", " + String.valueOf(LINE_WIDTH) + ");");
 
 		SplitPane spltPane = new SplitPane();
@@ -287,9 +298,9 @@ public class MainScope extends Application
 	{
 		stage.setTitle("DPScope");
 		stage.setMinWidth(900);
-		stage.setMinHeight(400);
+		stage.setMinHeight(500);
 		stage.setWidth(800);
-		stage.setHeight(500);
+		stage.setHeight(520);
 		init(stage);
 		stage.getScene().getStylesheets().add("com/dpscope/stylesheet.css");
 		stage.show();
@@ -355,7 +366,13 @@ public class MainScope extends Application
 					isDone = false;
 
 					// System.out.println("TestApp - Ready for read!");
-
+					
+					//TODO: implement this in a cleaner way - dont' want to have to always check this
+//					int tmpNumBlocksToRead = DPScope.ALL_BLOCKS;
+//					if(altSampling) {
+//						tmpNumBlocksToRead = 4;
+//					}
+							
 					for (int i = 0; i < DPScope.ALL_BLOCKS; i++)
 					{
 						myScope.readBack(i);
@@ -419,29 +436,34 @@ public class MainScope extends Application
 		if (readBackDone)
 		{
 			readBackDone = false;
-			series1.getData().clear();
-			series2.getData().clear();
-			double tmpScaleFactor = scaleFactorY;
+			if (!skipRead)
+			{
+				series1.getData().clear();
+				series2.getData().clear();
+				double tmpScaleFactor = scaleFactorY;
 
-			if (yAxis.getTickUnit() < 1.0)
-			{
-				tmpScaleFactor *= 2 * yAxis.getTickUnit();
-			}
-			else
-			{
-				tmpScaleFactor /= (double) (5.0 / yAxis.getTickUnit());
-			}
+				if (yAxis.getTickUnit() < 1.0)
+				{
+					tmpScaleFactor *= 2 * yAxis.getTickUnit();
+				}
+				else
+				{
+					tmpScaleFactor /= (double) (5.0 / yAxis.getTickUnit());
+				}
 
 //			long startTime = System.nanoTime();
 
-			int j = 0;
-			if ((chanSelect & CHANNEL_1_SELECT) > 0)
-			{
-				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i += 2)
+				if (!altSampling)
 				{
-					series1.getData().add(new XYChart.Data<>(j++, (myScope.scopeBuffer[i] * tmpScaleFactor) + yAxisOffset_Chan1));
-				}
-			}
+
+					int j = 0;
+					if ((chanSelect & CHANNEL_1_SELECT) > 0)
+					{
+						for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i += 2)
+						{
+							series1.getData().add(new XYChart.Data<>(j++, (myScope.scopeBuffer[i] * tmpScaleFactor) + yAxisOffset_Chan1));
+						}
+					}
 
 //			long stopTime = System.nanoTime();
 //			timeKeep[timeCount++] = (long) (stopTime - startTime);
@@ -456,13 +478,27 @@ public class MainScope extends Application
 //			}
 //			System.out.println("Filled series1 in: " + (stopTime - startTime)/1e6 + " ms");
 
-			if ((chanSelect & CHANNEL_2_SELECT) > 0)
-			{
-				j = 0;
-				for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i += 2)
-				{
-					series2.getData().add(new XYChart.Data<>(j++, (myScope.scopeBuffer[i] * tmpScaleFactor) + yAxisOffset_Chan2));
+					if ((chanSelect & CHANNEL_2_SELECT) > 0)
+					{
+						j = 0;
+						for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i += 2)
+						{
+							series2.getData().add(new XYChart.Data<>(j++, (myScope.scopeBuffer[i] * tmpScaleFactor) + yAxisOffset_Chan2));
+						}
+					}
 				}
+				else
+				{
+					int j = 0;
+					for (int i = 0; i < DPScope.MAX_READABLE_SIZE/2; i++)
+					{
+						series1.getData().add(new XYChart.Data<>(j++, (myScope.scopeBuffer[i] * tmpScaleFactor) + yAxisOffset_Chan1));
+					}
+				}
+			}
+			else
+			{
+				skipRead = false;
 			}
 			nextScopeData = true;
 		}
@@ -565,7 +601,7 @@ public class MainScope extends Application
 						if (hasConnectedOnce == false)
 						{
 							/*
-							 * Set default samplingMode and timeAxisScale values
+							 * Set default samplingMode and timeAxisScale values on first run
 							 */
 							myScope.samplingMode = DPScope.SAMPLE_MODE_RT;
 							myScope.timeAxisScale = 0.0005d;
@@ -632,10 +668,11 @@ public class MainScope extends Application
 
 			if (myScope != null)
 			{
-				
+
 				/*
-				 * See "Select Case GainCH1.ListIndex" and "CenterOffsetTrig_Click()" in MainPanel.frm for info
-				 * */
+				 * See "Select Case GainCH1.ListIndex" and "CenterOffsetTrig_Click()" in
+				 * MainPanel.frm for info
+				 */
 				switch (newValue)
 				{
 				case DPScope.DIV_2_V:
@@ -644,8 +681,8 @@ public class MainScope extends Application
 					myScope.sample_shift_ch2 = (byte) 2;
 					myScope.sample_subtract_ch2 = (byte) 0;
 					myScope.comp_input_chan = (byte) 1;
-//					myScope.triggerLevel = (byte) 255;
-					myScope.triggerLevel = (byte) 128; // (255 - 0)/2
+					myScope.triggerLevel_max = 255;
+					myScope.triggerLevel_min = 0;
 					break;
 				case DPScope.DIV_1_V:
 					myScope.sample_shift_ch1 = (byte) 1;
@@ -653,8 +690,8 @@ public class MainScope extends Application
 					myScope.sample_shift_ch2 = (byte) 1;
 					myScope.sample_subtract_ch2 = (byte) 128;
 					myScope.comp_input_chan = (byte) 1;
-//					myScope.triggerLevel = (byte) 128; // (192 - 64);
-					myScope.triggerLevel = (byte) 160; // (192 - 64)/2;
+					myScope.triggerLevel_max = 192;
+					myScope.triggerLevel_min = 64;
 					break;
 				case DPScope.DIV_500_MV:
 					myScope.sample_shift_ch1 = (byte) 0;
@@ -662,8 +699,8 @@ public class MainScope extends Application
 					myScope.sample_shift_ch2 = (byte) 0;
 					myScope.sample_subtract_ch2 = (byte) 192;
 					myScope.comp_input_chan = (byte) 1;
-//					myScope.triggerLevel = (byte) 64; // (160 - 96);
-					myScope.triggerLevel = (byte) 128; // (160 - 96)/2;
+					myScope.triggerLevel_max = 160;
+					myScope.triggerLevel_min = 96;
 					break;
 				case DPScope.DIV_200_MV:
 					myScope.sample_shift_ch1 = (byte) 2;
@@ -671,8 +708,8 @@ public class MainScope extends Application
 					myScope.sample_shift_ch2 = (byte) 2;
 					myScope.sample_subtract_ch2 = (byte) 0;
 					myScope.comp_input_chan = (byte) 2;
-//					myScope.triggerLevel = (byte) 255;
-					myScope.triggerLevel = (byte) 128; // (255 - 0)/2
+					myScope.triggerLevel_max = 255;
+					myScope.triggerLevel_min = 0;
 					break;
 				case DPScope.DIV_100_MV:
 					myScope.sample_shift_ch1 = (byte) 1;
@@ -680,8 +717,8 @@ public class MainScope extends Application
 					myScope.sample_shift_ch2 = (byte) 1;
 					myScope.sample_subtract_ch2 = (byte) 128;
 					myScope.comp_input_chan = (byte) 2;
-//					myScope.triggerLevel = (byte) 128; // (192 - 64);
-					myScope.triggerLevel = (byte) 160; // (192 - 64)/2;
+					myScope.triggerLevel_max = 192;
+					myScope.triggerLevel_min = 64;
 					break;
 				case DPScope.DIV_50_MV:
 					myScope.sample_shift_ch1 = (byte) 0;
@@ -689,12 +726,21 @@ public class MainScope extends Application
 					myScope.sample_shift_ch2 = (byte) 0;
 					myScope.sample_subtract_ch2 = (byte) 192;
 					myScope.comp_input_chan = (byte) 2;
-//					myScope.triggerLevel = (byte) 64; // (160 - 96);
-					myScope.triggerLevel = (byte) 128; // (160 - 96)/2;
+					myScope.triggerLevel_max = 160;
+					myScope.triggerLevel_min = 96;
 					break;
 				default:
 					break;
 				}
+				int tmpTrigValue = (((int) (myScope.triggerLevel_max + myScope.triggerLevel_min)) / 2);
+
+				// Set the trigger slider values to match the new trigger level max, min,
+				// nominal
+				sldrOffset_Trig.setMin(myScope.triggerLevel_min);
+				sldrOffset_Trig.setMax(myScope.triggerLevel_max);
+				sldrOffset_Trig.setValue(tmpTrigValue);
+
+				myScope.triggerLevel = (byte) tmpTrigValue;
 			}
 		});
 
@@ -864,13 +910,43 @@ public class MainScope extends Application
 				}
 
 				scopeSetupTimebase((String) newValue);
+				if (myScope.samplingMode == DPScope.SAMPLE_MODE_RT)
+				{
+					rdoChan_2.setDisable(false);
+					sldrOffset_Chan2.setDisable(false);
+				}
+				else if (myScope.samplingMode == DPScope.SAMPLE_MODE_ET)
+				{
+					rdoChan_2.setDisable(true);
+					sldrOffset_Chan2.setDisable(true);
+				}
+
+				if (DPScope.mapSamplingRates.get(newValue) == DPScope.DIV_200_US) // 50kSa ALT
+				{
+					altSampling = true;
+					myScope.channel_2 = DPScope.CH1_1;
+				}
+				else
+				{
+					altSampling = false;
+					myScope.channel_2 = DPScope.CH2_1;
+				}
+				
+				// stop it - pretend its completed
+				isArmed = true;
+				isDone = true;
+
+				// now start it again
+				nextScopeData = true;
+				skipRead = true;
+				
 			}
 		});
 
 		FlowPane flowPaneControls = new FlowPane();
-		flowPaneControls.setHgap(10);
+		flowPaneControls.setHgap(40);
 		flowPaneControls.setVgap(20);
-		flowPaneControls.setPadding(new Insets(15, 15, 15, 15));
+		flowPaneControls.setPadding(new Insets(15, 10, 15, 10));
 		flowPaneControls.setPrefWidth(180);
 		flowPaneControls.setMaxWidth(180);
 		flowPaneControls.setAlignment(Pos.CENTER);
@@ -886,7 +962,6 @@ public class MainScope extends Application
 			chanSelect ^= CHANNEL_1_SELECT;
 		});
 
-		RadioButton rdoChan_2 = new RadioButton("Ch2");
 		rdoChan_2.setOnAction((event) ->
 		{
 			chanSelect ^= CHANNEL_2_SELECT;
@@ -894,6 +969,50 @@ public class MainScope extends Application
 
 		rdoChan_1.setSelected(true);
 		chanSelect = CHANNEL_1_SELECT;
+
+		/* Trigger channel select */
+		final ChoiceBox<Object> choiceTrigChanSelect = new ChoiceBox<Object>();
+		choiceTrigChanSelect.setMinWidth(30.0d);
+		choiceTrigChanSelect.getItems().addAll(strAuto, new Separator(), strCh1, strExt);
+		choiceTrigChanSelect.getSelectionModel().selectFirst();
+
+		choiceTrigChanSelect.valueProperty().addListener((obs, oldValue, newValue) ->
+		{
+			if (myScope != null)
+			{
+				switch (newValue.toString())
+				{
+				case strAuto:
+					myScope.triggerAuto = true;
+					myScope.triggerExt = false;
+					sldrOffset_Trig.setDisable(true);
+					break;
+				case strCh1:
+					myScope.triggerAuto = false;
+					myScope.triggerExt = false;
+					sldrOffset_Trig.setDisable(false);
+					break;
+				case strExt:
+					myScope.triggerAuto = false;
+					myScope.triggerExt = true;
+					sldrOffset_Trig.setDisable(false);
+					break;
+				default:
+					myScope.triggerAuto = true;
+					myScope.triggerExt = false;
+					sldrOffset_Trig.setDisable(true);
+					break;
+				}
+
+				// stop it - pretend its completed
+				isArmed = true;
+				isDone = true;
+
+				// now start it again
+				nextScopeData = true;
+				skipRead = true;
+			}
+		});
 
 		/* Channel offset sliders */
 
@@ -929,7 +1048,6 @@ public class MainScope extends Application
 		});
 
 		// Channel 2 slider
-		Slider sldrOffset_Chan2 = new Slider();
 		sldrOffset_Chan2.setMin(-1.0);
 		sldrOffset_Chan2.setMax(1.0);
 		sldrOffset_Chan2.setValue(0.0);
@@ -960,15 +1078,15 @@ public class MainScope extends Application
 		});
 
 		// Trigger value slider
-		Slider sldrOffset_Trig = new Slider();
 		sldrOffset_Trig.setMin(0);
 		sldrOffset_Trig.setMax(255);
 		sldrOffset_Trig.setValue(128);
 		sldrOffset_Trig.setOrientation(Orientation.VERTICAL);
-		sldrOffset_Trig.setShowTickLabels(true);
-		sldrOffset_Trig.setShowTickMarks(true);
-		sldrOffset_Trig.setMajorTickUnit(50);
-		sldrOffset_Trig.setMinorTickCount(2);
+		sldrOffset_Trig.setShowTickLabels(false);
+		sldrOffset_Trig.setShowTickMarks(false);
+		sldrOffset_Trig.setDisable(true);
+//		sldrOffset_Trig.setMajorTickUnit(3);
+//		sldrOffset_Trig.setMinorTickCount(3);
 
 		sldrOffset_Trig.addEventFilter(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>()
 		{
@@ -979,13 +1097,17 @@ public class MainScope extends Application
 				{
 					if (mouseEvent.getClickCount() == 1) // listen for single-click
 					{
-						// FIXME: If incorrect trigger value used, no task set telling scope to retry
-						// sampling
-						// Should try reset action here when new trigger value is available...
 						if (myScope != null)
 						{
 							myScope.triggerLevel = (byte) (sldrOffset_Trig.getValue());
-							System.out.println("Trigger Level: " + myScope.triggerLevel);
+
+							// stop it - pretend its completed
+							isArmed = true;
+							isDone = true;
+
+							// now start it again
+							nextScopeData = true;
+							skipRead = true;
 						}
 					}
 					if (mouseEvent.getClickCount() == 2) // listen for double-click
@@ -1006,9 +1128,9 @@ public class MainScope extends Application
 //		});
 
 		HBox hbxSliderControls = new HBox(20.0d);
-		hbxSliderControls.getChildren().addAll(sldrOffset_Chan1, sldrOffset_Chan2, sldrOffset_Trig);
+		hbxSliderControls.getChildren().addAll(sldrOffset_Chan1, sldrOffset_Chan2, new Separator(Orientation.VERTICAL), sldrOffset_Trig);
 
-		toolbarChannelSelect.getItems().addAll(new Separator(), rdoChan_1, new Separator(), rdoChan_2, new Separator());
+		toolbarChannelSelect.getItems().addAll(rdoChan_1, new Separator(), rdoChan_2, new Separator(), choiceTrigChanSelect);
 
 		flowPaneControls.getChildren().addAll(btnStart, btnClear, spinVoltageScale, spinTimeScale, txtSamplingRate, toolbarChannelSelect,
 				hbxSliderControls);

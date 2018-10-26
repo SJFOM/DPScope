@@ -176,10 +176,12 @@ public class DPScope extends Observable
 	protected byte sample_subtract_delta_ch2 = (byte) 0; // 0 if probe attenuation false, else PROBE_1_TO_10_DELTA
 
 	// trigger mode (triggered or free running)
-	protected boolean triggerAuto 	= false; 	// true = free running, false = ch1 or ext. trigger
+	protected boolean triggerAuto 	= true; 	// true = free running, false = ch1 or ext. trigger
 	protected byte triggerRising 	= (byte) 0; // trigger polarity: 0 = falling edge, 1 = rising edge
 	protected boolean triggerExt 	= false; 	// false = internal, true = external trigger
 	protected byte triggerLevel 	= (byte) (255 & 0xff); // range of trigger threshold
+	protected int triggerLevel_max = 255;
+	protected int triggerLevel_min = 0;
 
 	protected static byte SAMPLE_MODE_RT = (byte) 0; 	// sampling mode Real Time
 	protected static byte SAMPLE_MODE_ET = (byte) 1; 	// sampling mode Equivalent Time

@@ -1,8 +1,14 @@
-To-do:
+Done:
 - get amplitude scaling sorted - partly sorted with manual scaling - different scaling values retain original value
-- Get channels working for high sampling frequencies (50ksa/ALT)
 - Adjustable vertical offset available for both channels - Done!
+
 
 Bugs:
 - 50ms/div onwards (faster) don't work - checked against Windows version - same result
 - 
+
+=======================================================================================
+
+To-do:
+- Get triggering working - 30 mins
+- Get channels working for high sampling frequencies (50ksa/ALT) - 40 mins
