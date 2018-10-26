@@ -176,20 +176,20 @@ public class DPScope extends Observable
 	protected byte sample_subtract_delta_ch2 = (byte) 0; // 0 if probe attenuation false, else PROBE_1_TO_10_DELTA
 
 	// trigger mode (triggered or free running)
-	protected boolean triggerAuto = true; // false = ch1 or ext. trigger, true = free running
-	protected byte triggerRising = (byte) 0; // trigger polarity: 0 = falling edge, 1 = rising edge
-	protected boolean triggerExt = false; // false = internal, true = external trigger
-	protected byte triggerLevel = (byte) (255 & 0xff); // range of trigger threshold
+	protected boolean triggerAuto 	= false; 	// true = free running, false = ch1 or ext. trigger
+	protected byte triggerRising 	= (byte) 0; // trigger polarity: 0 = falling edge, 1 = rising edge
+	protected boolean triggerExt 	= false; 	// false = internal, true = external trigger
+	protected byte triggerLevel 	= (byte) (255 & 0xff); // range of trigger threshold
 
-	protected static byte SAMPLE_MODE_RT = (byte) 0; // sampling mode Real Time
-	protected static byte SAMPLE_MODE_ET = (byte) 1; // sampling mode Equivalent Time
-	protected byte samplingMode = SAMPLE_MODE_RT; // 0 = real time, 1 = equivalent time
+	protected static byte SAMPLE_MODE_RT = (byte) 0; 	// sampling mode Real Time
+	protected static byte SAMPLE_MODE_ET = (byte) 1; 	// sampling mode Equivalent Time
+	protected byte samplingMode = SAMPLE_MODE_RT; 		// 0 = real time, 1 = equivalent time
 
 	// TODO: Put these values in a list
 	protected double timeAxisScale = 1.0d; // value for scaling time axis
 
-	protected byte sampleInterval = (byte) 0; // equivalent time sample interval in 0.5usec increments
-	protected byte comp_input_chan = (byte) 1; // trigger channel to use (1 = CH1 gain 1, 2 = CH1 gain 10, 3 = ext. trigger)
+	protected byte sampleInterval 	= (byte) 0; 	// equivalent time sample interval in 0.5usec increments
+	protected byte comp_input_chan 	= (byte) 1; 	// trigger channel to use (1 = CH1 gain 1, 2 = CH1 gain 10, 3 = ext. trigger)
 
 	private static float usbSupplyVoltage = 5.0f; // nominal voltage
 
@@ -510,7 +510,7 @@ public class DPScope extends Observable
 			public boolean go() throws Exception
 			{
 				// TODO Auto-generated method stub
-				txBuf[0] = 0x05;
+				txBuf[0] = (byte) 0x05;
 				txBuf[1] = channel_1;
 				txBuf[2] = channel_2;
 				txBuf[3] = ADC_ACQ;
@@ -524,7 +524,7 @@ public class DPScope extends Observable
 				txBuf[11] = (byte) (sample_subtract_ch2 + sample_subtract_delta_ch2);
 				txBuf[12] = (byte) ((triggerAuto == true) ? 0x00 : 0x01);
 				txBuf[13] = triggerRising;
-				txBuf[14] = 0x00; // trigger level MSB (currently not used)
+				txBuf[14] = (byte) 0x00; // trigger level MSB (currently not used)
 
 				/*
 				 * trigger level LSB (only applicable if triggering on CH1, not for ext.

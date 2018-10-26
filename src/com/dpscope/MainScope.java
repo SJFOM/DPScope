@@ -1,6 +1,5 @@
 package com.dpscope;
 
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Observable;
 import java.util.Observer;
@@ -33,14 +32,18 @@ import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.Separator;
+import javafx.scene.control.Slider;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.ToolBar;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
@@ -68,6 +71,16 @@ public class MainScope extends Application
 
 	// offset found by measuring P & G pins at rear of scope
 	private static float vUsbOffset = -0.008f;
+
+	// Common naming variables
+	private final String strDisconnect = "DISCONNECT";
+	private final String strConnect = "CONNECT";
+	private final String strClear = "CLEAR";
+	private final String strStart = "START";
+	private final String strStop = "STOP";
+
+	final Button btnStart = new Button(strStart);
+	final Button btnClear = new Button(strClear);
 
 	/*
 	 * Scope reading variables
@@ -103,6 +116,11 @@ public class MainScope extends Application
 
 	private NumberAxis xAxis;
 	private NumberAxis yAxis;
+
+	private double yAxisOffset_Chan1 = 0.0d;
+	private double yAxisOffset_Chan2 = 0.0d;
+	
+	private final double LINE_WIDTH = 0.5d;
 
 	/*
 	 * Main body of code
@@ -155,8 +173,8 @@ public class MainScope extends Application
 
 		String rgb = String.format("%d, %d, %d", (int) (color.getRed() * 255), (int) (color.getGreen() * 255),
 				(int) (color.getBlue() * 255));
-
-		line.setStyle("-fx-stroke: rgba(" + rgb + ", 1.0);");
+		
+		line.setStyle("-fx-stroke: rgba(" + rgb + ", " + String.valueOf(LINE_WIDTH) + ");");
 
 		SplitPane spltPane = new SplitPane();
 		spltPane.setDividerPosition(0, 0.18);
@@ -166,7 +184,7 @@ public class MainScope extends Application
 
 		BorderPane bpaneRoot = new BorderPane();
 
-		JFXButton btnConnect = new JFXButton("Connect".toUpperCase());
+		JFXButton btnConnect = new JFXButton(strConnect);
 		Label lblNotfication = new Label("");
 
 		btnConnect.setStyle("-fx-background-color: #f64863;");
@@ -177,13 +195,13 @@ public class MainScope extends Application
 			public void handle(ActionEvent e)
 			{
 
-				if (btnConnect.getText().equals("Connect".toUpperCase()))
+				if (btnConnect.getText().equals(strConnect))
 				{
 					myScope = new DPScope();
 					if (myScope.isDevicePresent())
 					{
 						lblNotfication.setText("");
-						btnConnect.setText("Disconnect".toUpperCase());
+						btnConnect.setText(strDisconnect);
 						myScope.connect();
 						myScope.addObserver(new Observer()
 						{
@@ -246,7 +264,7 @@ public class MainScope extends Application
 				}
 				else
 				{
-					btnConnect.setText("Connect".toUpperCase());
+					btnConnect.setText(strConnect);
 					disconnectScope();
 					btnConnect.setStyle("-fx-background-color: #f64863;");
 				}
@@ -404,12 +422,12 @@ public class MainScope extends Application
 			series1.getData().clear();
 			series2.getData().clear();
 			double tmpScaleFactor = scaleFactorY;
-			
-			if(yAxis.getTickUnit() < 1.0)
+
+			if (yAxis.getTickUnit() < 1.0)
 			{
 				tmpScaleFactor *= 2 * yAxis.getTickUnit();
-			} 
-			else 
+			}
+			else
 			{
 				tmpScaleFactor /= (double) (5.0 / yAxis.getTickUnit());
 			}
@@ -421,7 +439,7 @@ public class MainScope extends Application
 			{
 				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i += 2)
 				{
-					series1.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * tmpScaleFactor));
+					series1.getData().add(new XYChart.Data<>(j++, (myScope.scopeBuffer[i] * tmpScaleFactor) + yAxisOffset_Chan1));
 				}
 			}
 
@@ -443,7 +461,7 @@ public class MainScope extends Application
 				j = 0;
 				for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i += 2)
 				{
-					series2.getData().add(new XYChart.Data<>(j++, myScope.scopeBuffer[i] * tmpScaleFactor));
+					series2.getData().add(new XYChart.Data<>(j++, (myScope.scopeBuffer[i] * tmpScaleFactor) + yAxisOffset_Chan2));
 				}
 			}
 			nextScopeData = true;
@@ -465,7 +483,7 @@ public class MainScope extends Application
 			{
 				for (int i = 0; i < DPScope.MAX_READABLE_SIZE; i++)
 				{
-					series1.getData().add(new XYChart.Data<>(i, Math.random() - 0.5));
+					series1.getData().add(new XYChart.Data<>(i, (Math.random() - 0.5) + yAxisOffset_Chan1));
 				}
 			}
 
@@ -473,7 +491,7 @@ public class MainScope extends Application
 			{
 				for (int i = 1; i < DPScope.MAX_READABLE_SIZE; i++)
 				{
-					series2.getData().add(new XYChart.Data<>(i, Math.random() - 0.5));
+					series2.getData().add(new XYChart.Data<>(i, (Math.random() - 0.5) + yAxisOffset_Chan2));
 				}
 			}
 			nextTestData = true;
@@ -526,8 +544,6 @@ public class MainScope extends Application
 		tabTime.setClosable(false);
 		tabTime.setContent(paneTimeControls);
 
-		final Button btnStart = new Button("Start".toUpperCase());
-		final Button btnClear = new Button("Clear".toUpperCase());
 		btnStart.setMinWidth(70);
 		btnClear.setMinWidth(70);
 		// btnClear.setMinWidth(Control.USE_PREF_SIZE);
@@ -537,9 +553,9 @@ public class MainScope extends Application
 			@Override
 			public void handle(ActionEvent e)
 			{
-				if (btnStart.getText().equals("Start".toUpperCase()))
+				if (btnStart.getText().equals(strStart))
 				{
-					btnStart.setText("Stop".toUpperCase());
+					btnStart.setText(strStop);
 					if (myScope != null)
 					{
 						nextScopeData = true;
@@ -569,7 +585,7 @@ public class MainScope extends Application
 				}
 				else
 				{
-					btnStart.setText("Start".toUpperCase());
+					btnStart.setText(strStart);
 					nextScopeData = false;
 					btnClear.setDisable(false);
 					myAnimationTimer.stop();
@@ -604,6 +620,7 @@ public class MainScope extends Application
 		final Spinner<String> spinVoltageScale = new Spinner<String>();
 		spinVoltageScale.setValueFactory(valueFactoryVoltageDiv);
 		spinVoltageScale.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_VERTICAL);
+		spinVoltageScale.getEditor().setAlignment(Pos.CENTER);
 		spinVoltageScale.setPrefWidth(150);
 
 		spinVoltageScale.valueProperty().addListener((obs, oldValue, newValue) ->
@@ -615,6 +632,10 @@ public class MainScope extends Application
 
 			if (myScope != null)
 			{
+				
+				/*
+				 * See "Select Case GainCH1.ListIndex" and "CenterOffsetTrig_Click()" in MainPanel.frm for info
+				 * */
 				switch (newValue)
 				{
 				case DPScope.DIV_2_V:
@@ -623,7 +644,8 @@ public class MainScope extends Application
 					myScope.sample_shift_ch2 = (byte) 2;
 					myScope.sample_subtract_ch2 = (byte) 0;
 					myScope.comp_input_chan = (byte) 1;
-					myScope.triggerLevel = (byte) 255;
+//					myScope.triggerLevel = (byte) 255;
+					myScope.triggerLevel = (byte) 128; // (255 - 0)/2
 					break;
 				case DPScope.DIV_1_V:
 					myScope.sample_shift_ch1 = (byte) 1;
@@ -631,7 +653,8 @@ public class MainScope extends Application
 					myScope.sample_shift_ch2 = (byte) 1;
 					myScope.sample_subtract_ch2 = (byte) 128;
 					myScope.comp_input_chan = (byte) 1;
-					myScope.triggerLevel = (byte) 128; // (192 - 64);
+//					myScope.triggerLevel = (byte) 128; // (192 - 64);
+					myScope.triggerLevel = (byte) 160; // (192 - 64)/2;
 					break;
 				case DPScope.DIV_500_MV:
 					myScope.sample_shift_ch1 = (byte) 0;
@@ -639,7 +662,8 @@ public class MainScope extends Application
 					myScope.sample_shift_ch2 = (byte) 0;
 					myScope.sample_subtract_ch2 = (byte) 192;
 					myScope.comp_input_chan = (byte) 1;
-					myScope.triggerLevel = (byte) 64; // (160 - 96);
+//					myScope.triggerLevel = (byte) 64; // (160 - 96);
+					myScope.triggerLevel = (byte) 128; // (160 - 96)/2;
 					break;
 				case DPScope.DIV_200_MV:
 					myScope.sample_shift_ch1 = (byte) 2;
@@ -647,7 +671,8 @@ public class MainScope extends Application
 					myScope.sample_shift_ch2 = (byte) 2;
 					myScope.sample_subtract_ch2 = (byte) 0;
 					myScope.comp_input_chan = (byte) 2;
-					myScope.triggerLevel = (byte) 255;
+//					myScope.triggerLevel = (byte) 255;
+					myScope.triggerLevel = (byte) 128; // (255 - 0)/2
 					break;
 				case DPScope.DIV_100_MV:
 					myScope.sample_shift_ch1 = (byte) 1;
@@ -655,7 +680,8 @@ public class MainScope extends Application
 					myScope.sample_shift_ch2 = (byte) 1;
 					myScope.sample_subtract_ch2 = (byte) 128;
 					myScope.comp_input_chan = (byte) 2;
-					myScope.triggerLevel = (byte) 128; // (192 - 64);
+//					myScope.triggerLevel = (byte) 128; // (192 - 64);
+					myScope.triggerLevel = (byte) 160; // (192 - 64)/2;
 					break;
 				case DPScope.DIV_50_MV:
 					myScope.sample_shift_ch1 = (byte) 0;
@@ -663,7 +689,8 @@ public class MainScope extends Application
 					myScope.sample_shift_ch2 = (byte) 0;
 					myScope.sample_subtract_ch2 = (byte) 192;
 					myScope.comp_input_chan = (byte) 2;
-					myScope.triggerLevel = (byte) 64; // (160 - 96);
+//					myScope.triggerLevel = (byte) 64; // (160 - 96);
+					myScope.triggerLevel = (byte) 128; // (160 - 96)/2;
 					break;
 				default:
 					break;
@@ -681,6 +708,7 @@ public class MainScope extends Application
 		final Spinner<String> spinTimeScale = new Spinner<String>();
 		spinTimeScale.setValueFactory(valueFactoryTimeDiv);
 		spinTimeScale.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
+		spinTimeScale.getEditor().setAlignment(Pos.CENTER);
 		spinTimeScale.setPrefWidth(150);
 
 		// Text to complement the selected time scale - as seen in the DPScope Windows
@@ -867,13 +895,123 @@ public class MainScope extends Application
 		rdoChan_1.setSelected(true);
 		chanSelect = CHANNEL_1_SELECT;
 
-		// ToggleGroup groupChanSelect = new ToggleGroup();
-		// groupChanSelect.getToggles().addAll(rdoChan_1, rdoChan_2);
-		// groupChanSelect.selectToggle(rdoChan_1);
+		/* Channel offset sliders */
+
+		// Channel 1 slider
+		Slider sldrOffset_Chan1 = new Slider();
+		sldrOffset_Chan1.setMin(-1.0);
+		sldrOffset_Chan1.setMax(1.0);
+		sldrOffset_Chan1.setValue(0.0d);
+		sldrOffset_Chan1.setOrientation(Orientation.VERTICAL);
+		sldrOffset_Chan1.setShowTickLabels(false);
+		sldrOffset_Chan1.setShowTickMarks(true);
+		sldrOffset_Chan1.setMajorTickUnit(2);
+		sldrOffset_Chan1.setMinorTickCount(10);
+
+		sldrOffset_Chan1.addEventFilter(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>()
+		{
+			@Override
+			public void handle(MouseEvent mouseEvent)
+			{
+				if (mouseEvent.getButton().equals(MouseButton.PRIMARY))
+				{
+					if (mouseEvent.getClickCount() == 1) // listen for single-click
+					{
+						yAxisOffset_Chan1 = yAxis.getUpperBound() * (double) sldrOffset_Chan1.getValue();
+					}
+					if (mouseEvent.getClickCount() == 2) // listen for double-click
+					{
+						sldrOffset_Chan1.setValue(0.0d);
+						yAxisOffset_Chan1 = 0.0d;
+					}
+				}
+			}
+		});
+
+		// Channel 2 slider
+		Slider sldrOffset_Chan2 = new Slider();
+		sldrOffset_Chan2.setMin(-1.0);
+		sldrOffset_Chan2.setMax(1.0);
+		sldrOffset_Chan2.setValue(0.0);
+		sldrOffset_Chan2.setOrientation(Orientation.VERTICAL);
+		sldrOffset_Chan2.setShowTickLabels(false);
+		sldrOffset_Chan2.setShowTickMarks(true);
+		sldrOffset_Chan2.setMajorTickUnit(2);
+		sldrOffset_Chan2.setMinorTickCount(10);
+
+		sldrOffset_Chan2.addEventFilter(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>()
+		{
+			@Override
+			public void handle(MouseEvent mouseEvent)
+			{
+				if (mouseEvent.getButton().equals(MouseButton.PRIMARY))
+				{
+					if (mouseEvent.getClickCount() == 1) // listen for single-click
+					{
+						yAxisOffset_Chan2 = yAxis.getUpperBound() * (double) sldrOffset_Chan2.getValue();
+					}
+					if (mouseEvent.getClickCount() == 2) // listen for double-click
+					{
+						sldrOffset_Chan2.setValue(0.0d);
+						yAxisOffset_Chan2 = 0.0d;
+					}
+				}
+			}
+		});
+
+		// Trigger value slider
+		Slider sldrOffset_Trig = new Slider();
+		sldrOffset_Trig.setMin(0);
+		sldrOffset_Trig.setMax(255);
+		sldrOffset_Trig.setValue(128);
+		sldrOffset_Trig.setOrientation(Orientation.VERTICAL);
+		sldrOffset_Trig.setShowTickLabels(true);
+		sldrOffset_Trig.setShowTickMarks(true);
+		sldrOffset_Trig.setMajorTickUnit(50);
+		sldrOffset_Trig.setMinorTickCount(2);
+
+		sldrOffset_Trig.addEventFilter(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>()
+		{
+			@Override
+			public void handle(MouseEvent mouseEvent)
+			{
+				if (mouseEvent.getButton().equals(MouseButton.PRIMARY))
+				{
+					if (mouseEvent.getClickCount() == 1) // listen for single-click
+					{
+						// FIXME: If incorrect trigger value used, no task set telling scope to retry
+						// sampling
+						// Should try reset action here when new trigger value is available...
+						if (myScope != null)
+						{
+							myScope.triggerLevel = (byte) (sldrOffset_Trig.getValue());
+							System.out.println("Trigger Level: " + myScope.triggerLevel);
+						}
+					}
+					if (mouseEvent.getClickCount() == 2) // listen for double-click
+					{
+						sldrOffset_Trig.setValue(128);
+					}
+				}
+			}
+		});
+
+//		sldrOffset_Trig.valueProperty().addListener((obs, oldValue, newValue) ->
+//		{
+		// TODO: Add slider functionality for Trigger
+		// FIXME: If incorrect trigger value used, no task set telling scope to retry
+		// sampling
+		// Should try reset action here when new trigger value is available...
+//			myScope.triggerLevel = (byte)(newValue.byteValue());
+//		});
+
+		HBox hbxSliderControls = new HBox(20.0d);
+		hbxSliderControls.getChildren().addAll(sldrOffset_Chan1, sldrOffset_Chan2, sldrOffset_Trig);
 
 		toolbarChannelSelect.getItems().addAll(new Separator(), rdoChan_1, new Separator(), rdoChan_2, new Separator());
 
-		flowPaneControls.getChildren().addAll(btnStart, btnClear, spinVoltageScale, spinTimeScale, txtSamplingRate, toolbarChannelSelect);
+		flowPaneControls.getChildren().addAll(btnStart, btnClear, spinVoltageScale, spinTimeScale, txtSamplingRate, toolbarChannelSelect,
+				hbxSliderControls);
 		paneTimeControls.getChildren().add(flowPaneControls);
 
 		/*
@@ -1005,6 +1143,8 @@ public class MainScope extends Application
 			myScope.deleteObservers();
 			myScope = null;
 			nextScopeData = false;
+			btnStart.setText(strStart);
+			btnClear.setDisable(false);
 			return true;
 		}
 		return false;
