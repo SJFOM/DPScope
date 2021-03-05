@@ -2,3 +2,7 @@
 .thick-chart .chart-series-line {    
 	-fx-stroke-width: 1px;
 }
+
+.chart-line-symbol {
+    -fx-shape: ""; /* Makes the LineChart speedier apparently*/
+}

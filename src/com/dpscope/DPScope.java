@@ -179,7 +179,7 @@ public class DPScope extends Observable
 	protected boolean triggerAuto 	= true; 	// true = free running, false = ch1 or ext. trigger
 	protected byte triggerRising 	= (byte) 0; // trigger polarity: 0 = falling edge, 1 = rising edge
 	protected boolean triggerExt 	= false; 	// false = internal, true = external trigger
-	protected byte triggerLevel 	= (byte) (255 & 0xff); // range of trigger threshold
+	protected int triggerLevel 	= 127; // range of trigger threshold
 	protected int triggerLevel_max = 255;
 	protected int triggerLevel_min = 0;
 
@@ -223,9 +223,6 @@ public class DPScope extends Observable
 	public long currTime = 0;
 
 	public int callCount = 0;
-
-	private byte ch1 = 0;
-	private byte ch2 = 0;
 
 	public static enum Command
 	{
@@ -290,7 +287,7 @@ public class DPScope extends Observable
 					{
 						/*
 						 * TODO: If scope is plotting and device is removed be able to handle it
-						 * properly App crashes if it happens currently
+						 * properly. App crashes if it happens currently
 						 */
 
 						System.out.println("device removed");
@@ -511,7 +508,10 @@ public class DPScope extends Observable
 			@Override
 			public boolean go() throws Exception
 			{
-				// TODO Auto-generated method stub
+				/*
+				TODO: Might be better to have txBuf pre-configured with these bytes instead of 
+				filling it up like this every time you call armScope (which is very often!)
+				*/
 				txBuf[0] = (byte) 0x05;
 				txBuf[1] = channel_1;
 				txBuf[2] = channel_2;
@@ -542,10 +542,15 @@ public class DPScope extends Observable
 				}
 				else
 				{
+					// double trigVal = 256 - 127 + sample_subtract_delta_ch1 / 2.0;
 					double trigVal = 256 - triggerLevel + sample_subtract_delta_ch1 / 2.0;
+					// System.out.println("triggerLevel: " + triggerLevel);
+					// System.out.println("Before: trigVal: " + trigVal);
 					trigVal = (trigVal < 0) ? 0 : trigVal;
 					trigVal = (trigVal > 255) ? 255 : trigVal;
+					// System.out.println("Before: trigVal: " + trigVal);
 					txBuf[15] = (byte) ((byte) trigVal & 0xff);
+					// System.out.printf("trigVal byte: 0x%02x\n", txBuf[15]);
 				}
 
 				txBuf[16] = samplingMode; // sampling mode: 0 = real time, 1 = equivalent time
@@ -917,15 +922,17 @@ public class DPScope extends Observable
 		actionQueue.clear();
 	}
 
+
 	Thread processAction = new Thread()
 	{
 
+		// public synchronized void run()
 		public synchronized void run()
 		{
 			try
 			{
 				BootAction bootItem = null;
-				isReady = true;
+				// isReady = true;
 				while (deviceOpen)
 				{
 					if (isReady && (actionQueue.size() > 0))
@@ -940,7 +947,13 @@ public class DPScope extends Observable
 							}
 							else
 							{
+								/* 
+									Doesn't recover well from empty actionQueue, try to sleep to get over it
+									One way to trigger empty queue is to trigger outside of signal bounds (min/max)
+								*/
 								System.out.println("Error - Empty actionQueue!");
+								Thread.sleep(100);
+								armScope();
 								break;
 							}
 
@@ -956,6 +969,7 @@ public class DPScope extends Observable
 						// Shouldn't enter here if pending tasks
 						// are updated faster than this timeout..
 						Thread.sleep(10);
+//						System.out.println("£");
 					}
 				}
 				// if scope not/no longer connected
@@ -985,7 +999,7 @@ public class DPScope extends Observable
 			{
 				break;
 			}
-
+			
 			try
 			{
 				Thread.sleep(interval);

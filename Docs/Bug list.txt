@@ -12,3 +12,10 @@ Bugs:
 To-do:
 - Get triggering working - 30 mins
 - Get channels working for high sampling frequencies (50ksa/ALT) - 40 mins
+
+Refreshed To-do list (1st March 2021):
+- One major issue is how resource hungry the scope data grabbing + plotting is. If you remove all the scaling and series1/2 filling
+and plotting you reduce the CPU workload to about 2/3thirds. This still leaves a lot to be desired on the HID scope data grabbing end.
+Need to revise this, especially since we don't need to be updating our screens at 60fps (I mean it'd be nice but...).
+ - Start looking at where the bottlenecks are in terms of data-grabbing and how long operations are taking on average! Break it down
+ into smaller chunks and go from there. 
